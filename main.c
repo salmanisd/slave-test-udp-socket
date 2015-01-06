@@ -608,6 +608,11 @@ void main()
     //
     InitTerm();
 
+
+
+    //
+    spi();
+
     //
     // Display banner
     //
@@ -703,6 +708,7 @@ void main()
     // power off the network processor
     //
     lRetVal = sl_Stop(SL_STOP_TIMEOUT);
+
 
     while (1)
     {

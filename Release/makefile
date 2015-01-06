@@ -10,6 +10,7 @@ ORDERED_OBJS += \
 $(GEN_CMDS__FLAG) \
 "./main.obj" \
 "./pinmux.obj" \
+"./spi.obj" \
 "./startup_ccs.obj" \
 "./uart_if.obj" \
 "./udma_if.obj" \
@@ -147,8 +148,8 @@ test\ udp_socket.hex: $(EXE_OUTPUTS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)$(BIN_OUTPUTS__QUOTED)
-	-$(RM) "main.pp" "pinmux.pp" "startup_ccs.pp" "uart_if.pp" "udma_if.pp" 
-	-$(RM) "main.obj" "pinmux.obj" "startup_ccs.obj" "uart_if.obj" "udma_if.obj" 
+	-$(RM) "main.pp" "pinmux.pp" "spi.pp" "startup_ccs.pp" "uart_if.pp" "udma_if.pp" 
+	-$(RM) "main.obj" "pinmux.obj" "spi.obj" "startup_ccs.obj" "uart_if.obj" "udma_if.obj" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

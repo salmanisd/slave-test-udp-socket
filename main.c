@@ -611,7 +611,7 @@ void main()
 
 
     //
-    spi();
+ //   spi();
 
     //
     // Display banner

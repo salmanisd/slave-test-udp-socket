@@ -44,6 +44,12 @@ typedef enum{
     STATUS_CODE_MAX = -0xBB8
 }e_AppStatusCodes;
 
+//****************************************************************************
+//                      Receiver Wireless Settings
+//SSID Name= forticc
+//password=icecream
+//Connected to Wireless Network Connection 2 = 192.168.137.1
+//****************************************************************************
 
 //****************************************************************************
 //                      LOCAL FUNCTION PROTOTYPES
@@ -68,8 +74,9 @@ unsigned int   g_uiPortNum = PORT_NUM;
 unsigned long  g_ulPacketCount = UDP_PACKET_COUNT;
 unsigned char  g_ucSimplelinkstarted = 0;
 unsigned long  g_ulIpAddr = 0;
-char g_cBsdBuf[BUF_SIZE];
-
+char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";
+extern unsigned char myStr[100];				//Holds string from master over SPI
+unsigned int index=0;
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
 #endif
@@ -460,14 +467,9 @@ int BsdUdpClient(unsigned short usPort)
     int             iStatus;
     long            lLoopCount = 0;
 
-    // filling the buffer
-    for (iCounter=0 ; iCounter<BUF_SIZE ; iCounter++)
-    {
-        g_cBsdBuf[iCounter] = 'G';
-    }
 
-    sTestBufLen  = BUF_SIZE;
-
+   // sTestBufLen  = BUF_SIZE;
+       sTestBufLen  = 100;
     //filling the UDP server socket address
     sAddr.sin_family = SL_AF_INET;
     sAddr.sin_port = sl_Htons((unsigned short)usPort);
@@ -488,7 +490,7 @@ int BsdUdpClient(unsigned short usPort)
     while (lLoopCount < g_ulPacketCount)
     {
         // sending packet
-        iStatus = sl_SendTo(iSockID, g_cBsdBuf, sTestBufLen, 0,
+        iStatus = sl_SendTo(iSockID, myStr, sTestBufLen, 0,
                                 (SlSockAddr_t *)&sAddr, iAddrSize);
         if( iStatus <= 0 )
         {
@@ -599,7 +601,7 @@ void main()
     UDMAInit();
 
     //
-    // Configure the pinmux settings for the peripherals exercised
+    // Configure the pinmux settings for the peripherals UART AND SPI
     //
     PinMuxConfig();
 
@@ -611,7 +613,7 @@ void main()
 
 
     //
- //   spi();
+    spi();
 
     //
     // Display banner
@@ -702,9 +704,13 @@ void main()
 
     UART_PRINT("Exiting Application ...\n\r");
 */
+    while (myStr[0]!='h');
+    UART_PRINT("mystr received");
     BsdUdpClient(5001);
-    UART_PRINT("HIIHIHI");
-    //
+
+
+
+
     // power off the network processor
     //
     lRetVal = sl_Stop(SL_STOP_TIMEOUT);

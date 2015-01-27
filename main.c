@@ -75,7 +75,7 @@ unsigned long  g_ulPacketCount = UDP_PACKET_COUNT;
 unsigned char  g_ucSimplelinkstarted = 0;
 unsigned long  g_ulIpAddr = 0;
 char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";
-extern unsigned char myStr[100];				//Holds string from master over SPI
+extern unsigned short myStr[100];				//Holds string from master over SPI
 unsigned int index=0;
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
@@ -469,7 +469,7 @@ int BsdUdpClient(unsigned short usPort)
 
 
    // sTestBufLen  = BUF_SIZE;
-       sTestBufLen  = 100;
+       sTestBufLen  = 1400;
     //filling the UDP server socket address
     sAddr.sin_family = SL_AF_INET;
     sAddr.sin_port = sl_Htons((unsigned short)usPort);
@@ -704,7 +704,7 @@ void main()
 
     UART_PRINT("Exiting Application ...\n\r");
 */
-    while (myStr[0]!='h');
+    while (myStr[0]!='T');
     UART_PRINT("mystr received");
     BsdUdpClient(5001);
 

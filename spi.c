@@ -90,7 +90,7 @@ extern uVectorEntry __vector_table;
 //! \return None.
 //
 //*****************************************************************************
-unsigned char myStr[100];
+unsigned short myStr[100];
 unsigned int gi = 0;
 static void SlaveIntHandler()
 {
@@ -166,7 +166,7 @@ void SlaveMain()
                      SPI_4PIN_MODE |
                      SPI_TURBO_OFF |
                      SPI_CS_ACTIVELOW |
-                     SPI_WL_8));
+                     SPI_WL_16));
 
   //
   // Register Interrupt Handler
@@ -174,9 +174,9 @@ void SlaveMain()
  // MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler); Disable SPI Interrupts
 
   SetupTransfer(UDMA_CH30_GSPI_RX,UDMA_MODE_BASIC,1000,
-                UDMA_SIZE_8,UDMA_ARB_1,
+                UDMA_SIZE_16,UDMA_ARB_1,
                 (void *)(GSPI_BASE + MCSPI_O_RX0),UDMA_SRC_INC_NONE,
-                &myStr,UDMA_DST_INC_8);
+                &myStr,UDMA_DST_INC_16);
 
   SetupTransfer(UDMA_CH31_GSPI_TX,UDMA_MODE_BASIC,TR_BUFF_SIZE,
                 UDMA_SIZE_8,UDMA_ARB_1,

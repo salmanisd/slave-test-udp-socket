@@ -67,10 +67,6 @@
 //*****************************************************************************
 // Global variables
 //*****************************************************************************
-static unsigned char g_ucTxBuff[TR_BUFF_SIZE];
-static unsigned char g_ucRxBuff[TR_BUFF_SIZE];
-static unsigned char ucTxBuffNdx;
-static unsigned char ucRxBuffNdx;
 
 #if defined(ccs)
 extern void (* const g_pfnVectors[])(void);
@@ -89,34 +85,81 @@ extern uVectorEntry __vector_table;
 //!
 //! \return None.
 //
-//*****************************************************************************
-unsigned short myStr[100];
-unsigned int gi = 0;
+//*********************5*******************************************************
+unsigned short myStrA[50];
+unsigned short myStrB[50];
+unsigned int index = 0;
+unsigned int index2 = 0;
 static void SlaveIntHandler()
 {
-  unsigned long ulRecvData;
-  unsigned long ulStatus;
+	unsigned int index = 0;
+	 unsigned long ulStatus;
+		    unsigned long ulMode;
+		    //
+		    // Read the interrupt status of the SPI.
+		    //
+		    ulStatus = MAP_SPIIntStatus(GSPI_BASE,true);
+		    //
+		    // Clear any pending status, even though there should be none since no SPI
+		    // interrupts were enabled.
+		    //
+		    MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX|SPI_INT_DMATX);
 
-  ulStatus = MAP_SPIIntStatus(GSPI_BASE,true);
 
-  MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX|SPI_INT_DMATX);
+		    //
+		    // Check the DMA control table to see if the ping-pong "A" transfer is
+		    // complete.  The "A" transfer uses receive buffer "A", and the primary
+		    // control structure.
+		    //
+		    ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT);
 
-//#if 1
-  if(ulStatus & SPI_INT_TX_EMPTY)
-  {
-    MAP_SPIDataPut(GSPI_BASE,g_ucTxBuff[ucTxBuffNdx%TR_BUFF_SIZE]);
-    ucTxBuffNdx++;
-  }
+		    //
+		    // If the primary control structure indicates stop, that means the "A"
+		    // receive buffer is done.  The uDMA controller should still be receiving
+		    // data into the "B" buffer.
+		    //
+		    if(ulMode == UDMA_MODE_STOP)
+		    {
 
-  if(ulStatus & SPI_INT_RX_FULL)
-  {
-    MAP_SPIDataGetNonBlocking(GSPI_BASE,&ulRecvData);
-    g_ucTxBuff[ucRxBuffNdx%TR_BUFF_SIZE] = ulRecvData;
-   // myStr[gi++]=(char)ulRecvData;
-    //   Report("%c",ulRecvData);
-    ucRxBuffNdx++;
-  }
-//#endif
+		        //
+		        // Set up the next transfer for the "A" buffer, using the primary
+		        // control structure.  When the ongoing receive into the "B" buffer is
+		        // done, the uDMA controller will switch back to this one.
+		        //
+		    	  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
+		    	              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_4,
+		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+		    	              myStrA, UDMA_DST_INC_16);
+		    }
+
+		    //
+		    // Check the DMA control table to see if the ping-pong "B" transfer is
+		    // complete.  The "B" transfer uses receive buffer "B", and the alternate
+		    // control structure.
+		    //
+		    ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT);
+
+		    //
+		    // If the alternate control structure indicates stop, that means the "B"
+		    // receive buffer is done.  The uDMA controller should still be receiving
+		    // data into the "A" buffer.
+		    //
+		    if(ulMode == UDMA_MODE_STOP)
+		    {
+
+
+		        //
+		        // Set up the next transfer for the "B" buffer, using the alternate
+		        // control structure.  When the ongoing receive into the "A" buffer is
+		        // done, the uDMA controller will switch back to this one.
+		        //
+		   	  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
+		  		    	              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_4,
+		  		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+		  		    	              myStrB, UDMA_DST_INC_16);
+		    }
+
+
 }
 
 //*****************************************************************************
@@ -131,31 +174,12 @@ static void SlaveIntHandler()
 //*****************************************************************************
 void SlaveMain()
 {
-  unsigned long ulNdx;
 
-  //
-  // Initialize the message
-  //
-  for(ulNdx=0; ulNdx < TR_BUFF_SIZE; ulNdx++)
-  {
-    g_ucTxBuff[ulNdx] = ulNdx;
-  }
-
-  //
-  // Set Tx buffer index
-  //
-  ucTxBuffNdx = 0;
-  ucRxBuffNdx = 0;
 
   //
   // Reset SPI
   //
   MAP_SPIReset(GSPI_BASE);
-
-  //
-  // Initialize UDMA
-  //
-//  UDMAInit();
 
   //
   // Configure SPI interface
@@ -165,32 +189,26 @@ void SlaveMain()
                      (SPI_HW_CTRL_CS |
                      SPI_4PIN_MODE |
                      SPI_TURBO_OFF |
-                     SPI_CS_ACTIVELOW |
+                     SPI_CS_ACTIVEHIGH |
                      SPI_WL_16));
 
   //
   // Register Interrupt Handler
   //
- // MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler); Disable SPI Interrupts
-
-  SetupTransfer(UDMA_CH30_GSPI_RX,UDMA_MODE_BASIC,1000,
-                UDMA_SIZE_16,UDMA_ARB_1,
-                (void *)(GSPI_BASE + MCSPI_O_RX0),UDMA_SRC_INC_NONE,
-                &myStr,UDMA_DST_INC_16);
-
-  SetupTransfer(UDMA_CH31_GSPI_TX,UDMA_MODE_BASIC,TR_BUFF_SIZE,
-                UDMA_SIZE_8,UDMA_ARB_1,
-                &g_ucTxBuff,UDMA_SRC_INC_8,(void *)(GSPI_BASE + MCSPI_O_TX0),
-                UDMA_DST_INC_NONE);
-
-#if 0
-  SPIWordCountSet(GSPI_BASE,TR_BUFF_SIZE);
-
-  SPIFIFOLevelSet(GSPI_BASE,1,1);
+  MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);//Disable SPI Interrupts
 
 
-  SPIFIFOEnable(GSPI_BASE, SPI_RX_FIFO|SPI_TX_FIFO);
-#endif
+  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
+              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_4,
+              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+              myStrA, UDMA_DST_INC_16);
+
+  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
+              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_4,
+                (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+                myStrB, UDMA_DST_INC_16);
+
+
 
   SPIDmaEnable(GSPI_BASE,SPI_RX_DMA|SPI_TX_DMA);
 
@@ -206,39 +224,6 @@ void SlaveMain()
   MAP_SPIEnable(GSPI_BASE);
 
 
-}
-
-//*****************************************************************************
-//
-//! Board Initialization & Configuration
-//!
-//! \param  None
-//!
-//! \return None
-//
-//*****************************************************************************
-static void
-BoardInit(void)
-{
-/* In case of TI-RTOS vector table is initialize by OS itself */
-#ifndef USE_TIRTOS
-  //
-  // Set vector table base
-  //
-#if defined(ccs)
-    MAP_IntVTableBaseSet((unsigned long)&g_pfnVectors[0]);
-#endif
-#if defined(ewarm)
-    MAP_IntVTableBaseSet((unsigned long)&__vector_table);
-#endif
-#endif
-  //
-  // Enable Processor
-  //
-  MAP_IntMasterEnable();
-  MAP_IntEnable(FAULT_SYSTICK);
-
-  PRCMCC3200MCUInit();
 }
 
 //*****************************************************************************

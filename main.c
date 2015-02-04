@@ -60,7 +60,7 @@ static long WlanConnect();
 static void BoardInit();
 static void InitializeAppVariables();
 static long ConfigureSimpleLinkToDefaultState();
-
+void spi();
 
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
@@ -74,9 +74,12 @@ unsigned int   g_uiPortNum = PORT_NUM;
 unsigned long  g_ulPacketCount = UDP_PACKET_COUNT;
 unsigned char  g_ucSimplelinkstarted = 0;
 unsigned long  g_ulIpAddr = 0;
-char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";
-extern unsigned short myStr[100];				//Holds string from master over SPI
-unsigned int index=0;
+unsigned short hh;
+char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;unsigned char spstr[];
+
+extern unsigned short myStrA[50];				//Holds string from master over SPI
+extern unsigned short myStrB[50];				//Holds string from master over SPI
+
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
 #endif
@@ -459,6 +462,7 @@ static long ConfigureSimpleLinkToDefaultState()
 //****************************************************************************
 int BsdUdpClient(unsigned short usPort)
 {
+	unsigned int index=0;
     int             iCounter;
     short           sTestBufLen;
     SlSockAddrIn_t  sAddr;
@@ -467,9 +471,8 @@ int BsdUdpClient(unsigned short usPort)
     int             iStatus;
     long            lLoopCount = 0;
 
-
    // sTestBufLen  = BUF_SIZE;
-       sTestBufLen  = 1400;
+       sTestBufLen  = 4;
     //filling the UDP server socket address
     sAddr.sin_family = SL_AF_INET;
     sAddr.sin_port = sl_Htons((unsigned short)usPort);
@@ -487,10 +490,18 @@ int BsdUdpClient(unsigned short usPort)
 
     // for a UDP connection connect is not required
     // sending 1000 packets to the UDP server
-    while (lLoopCount < g_ulPacketCount)
+
+/*
+    while (myStrA[index]==NULL)
     {
+    	__asm("nop");
+    }
+
+*/
+    	sprintf(spstr,"%d",myStrA[index]);
+
         // sending packet
-        iStatus = sl_SendTo(iSockID, myStr, sTestBufLen, 0,
+        iStatus = sl_SendTo(iSockID, spstr , sTestBufLen, 0,
                                 (SlSockAddr_t *)&sAddr, iAddrSize);
         if( iStatus <= 0 )
         {
@@ -498,8 +509,8 @@ int BsdUdpClient(unsigned short usPort)
             sl_Close(iSockID);
             ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
         }
-        lLoopCount++;
-    }
+        lLoopCount++;index++;
+
 
     UART_PRINT("Sent %u packets successfully\n\r",g_ulPacketCount);
 
@@ -611,9 +622,8 @@ void main()
     InitTerm();
 
 
-
-    //
     spi();
+
 
     //
     // Display banner
@@ -704,9 +714,12 @@ void main()
 
     UART_PRINT("Exiting Application ...\n\r");
 */
-    while (myStr[0]!='T');
-    UART_PRINT("mystr received");
-    BsdUdpClient(5001);
+  //  while (myStr[0]>1250);
+
+    //
+
+      //  UART_PRINT("opening client");
+  //  BsdUdpClient(5001);
 
 
 

@@ -1,42 +1,4 @@
-//*****************************************************************************
-// main.c
-//
-// The demo application focuses on showing the required initialization
-// sequence to enable the CC3200 SPI module in full duplex 4-wire master
-// and slave mode(s).
-//
-// Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/
-//
-//
-//  Redistribution and use in source and binary forms, with or without
-//  modification, are permitted provided that the following conditions
-//  are met:
-//
-//    Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//
-//    Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the
-//    distribution.
-//
-//    Neither the name of Texas Instruments Incorporated nor the names of
-//    its contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-//  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-//  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-//  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-//  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-//  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-//  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-//  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-//  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-//  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-//  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-//*****************************************************************************
+
 
 #include <string.h>
 #include "hw_types.h"
@@ -88,13 +50,21 @@ extern uVectorEntry __vector_table;
 //*********************5*******************************************************
 unsigned short myStrA[50];
 unsigned short myStrB[50];
+unsigned short myStrC[50];
+
 unsigned int index = 0;
 unsigned int index2 = 0;
+unsigned int check=0;
+unsigned long ulStatus;
+		    unsigned long ulMode;
 static void SlaveIntHandler()
 {
+
+
 	unsigned int index = 0;
-	 unsigned long ulStatus;
-		    unsigned long ulMode;
+
+
+		    check++;
 		    //
 		    // Read the interrupt status of the SPI.
 		    //
@@ -103,7 +73,13 @@ static void SlaveIntHandler()
 		    // Clear any pending status, even though there should be none since no SPI
 		    // interrupts were enabled.
 		    //
-		    MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX|SPI_INT_DMATX);
+		    //	MAP_SPIIntClear(GSPI_BASE,ulStatus);
+		   		//    MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX|SPI_INT_DMATX);
+		   	    MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX);
+		   		//    MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMATX);
+			   	//	  MAP_SPIIntDisable(GSPI_BASE,SPI_INT_DMARX);
+
+		  // 		  MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMARX);
 
 
 		    //
@@ -121,6 +97,11 @@ static void SlaveIntHandler()
 		    if(ulMode == UDMA_MODE_STOP)
 		    {
 
+		    	for (index=0;index<50;index++)
+		    	{ myStrC[index]=myStrA[index];
+
+		    	}
+		    	// BsdUdpClient(5001);
 		        //
 		        // Set up the next transfer for the "A" buffer, using the primary
 		        // control structure.  When the ongoing receive into the "B" buffer is
@@ -130,6 +111,7 @@ static void SlaveIntHandler()
 		    	              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_4,
 		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 		    	              myStrA, UDMA_DST_INC_16);
+
 		    }
 
 		    //
@@ -146,8 +128,10 @@ static void SlaveIntHandler()
 		    //
 		    if(ulMode == UDMA_MODE_STOP)
 		    {
+		    	for (index=0;index<50;index++)
+		    			    	{ myStrC[index]=myStrB[index];
 
-
+		    			    	}
 		        //
 		        // Set up the next transfer for the "B" buffer, using the alternate
 		        // control structure.  When the ongoing receive into the "A" buffer is
@@ -157,8 +141,9 @@ static void SlaveIntHandler()
 		  		    	              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_4,
 		  		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 		  		    	              myStrB, UDMA_DST_INC_16);
-		    }
 
+
+		    }
 
 }
 
@@ -195,7 +180,7 @@ void SlaveMain()
   //
   // Register Interrupt Handler
   //
-  MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);//Disable SPI Interrupts
+ MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);//Disable SPI Interrupts
 
 
   SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
@@ -205,18 +190,19 @@ void SlaveMain()
 
   SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
               sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_4,
-                (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-                myStrB, UDMA_DST_INC_16);
+              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+              myStrB, UDMA_DST_INC_16);
 
 
 
-  SPIDmaEnable(GSPI_BASE,SPI_RX_DMA|SPI_TX_DMA);
+
+  SPIDmaEnable(GSPI_BASE,SPI_RX_DMA);
 
 
   //
   // Enable Interrupts
   //
-  MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMATX|SPI_INT_DMARX);
+  MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMARX);
 
   //
   // Enable SPI for communication
@@ -242,7 +228,7 @@ void spi()
   // Initialize Board configurations
   //
 //BoardInit();
-
+	//UART_PRINT("Device started as STATION \n\r");
   //
   // Muxing  SPI lines.
   //
@@ -259,8 +245,6 @@ void spi()
   // Reset the peripheral
   //
   MAP_PRCMPeripheralReset(PRCM_GSPI);
-
-
 
   SlaveMain();
 

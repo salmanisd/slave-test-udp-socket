@@ -79,7 +79,7 @@ char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsi
 
 extern unsigned short myStrA[50];				//Holds string from master over SPI
 extern unsigned short myStrB[50];				//Holds string from master over SPI
-
+//extern unsigned short myStrC[50];
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
 #endif
@@ -471,6 +471,10 @@ int BsdUdpClient(unsigned short usPort)
     int             iStatus;
     long            lLoopCount = 0;
 
+char stringbuf[]="Testing Communication";
+
+
+UART_PRINT("entered bsdudpclient \n\r");
    // sTestBufLen  = BUF_SIZE;
        sTestBufLen  = 4;
     //filling the UDP server socket address
@@ -488,20 +492,17 @@ int BsdUdpClient(unsigned short usPort)
         ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
     }
 
-    // for a UDP connection connect is not required
-    // sending 1000 packets to the UDP server
 
-/*
-    while (myStrA[index]==NULL)
-    {
-    	__asm("nop");
-    }
+    UART_PRINT("created socket \n\r");
 
-*/
-    	sprintf(spstr,"%d",myStrA[index]);
 
-        // sending packet
-        iStatus = sl_SendTo(iSockID, spstr , sTestBufLen, 0,
+while (1)
+{
+    UART_PRINT("in loop \n\r");
+
+	//sprintf(spstr,"%d",myStrC[index]);
+	// sending packet
+        iStatus = sl_SendTo(iSockID, stringbuf , sTestBufLen, 0,
                                 (SlSockAddr_t *)&sAddr, iAddrSize);
         if( iStatus <= 0 )
         {
@@ -510,7 +511,7 @@ int BsdUdpClient(unsigned short usPort)
             ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
         }
         lLoopCount++;index++;
-
+}
 
     UART_PRINT("Sent %u packets successfully\n\r",g_ulPacketCount);
 
@@ -622,9 +623,6 @@ void main()
     InitTerm();
 
 
-    spi();
-
-
     //
     // Display banner
     //
@@ -719,10 +717,13 @@ void main()
     //
 
       //  UART_PRINT("opening client");
-  //  BsdUdpClient(5001);
+   // BsdUdpClient(5001);
 
 
-
+    UART_PRINT("entering spi config");
+           spi();
+             UART_PRINT("returned from spi config");
+BsdUdpClient(5001);
 
     // power off the network processor
     //
@@ -734,6 +735,12 @@ void main()
      _SlNonOsMainLoopTask();
     }
 }
+
+
+
+
+////////////////////////////////////////////
+
 
 //*****************************************************************************
 //

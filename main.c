@@ -79,7 +79,7 @@ char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsi
 
 extern unsigned short myStrA[50];				//Holds string from master over SPI
 extern unsigned short myStrB[50];				//Holds string from master over SPI
-//extern unsigned short myStrC[50];
+extern unsigned short myStrC[50];
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
 #endif
@@ -476,7 +476,7 @@ char stringbuf[]="Testing Communication";
 
 UART_PRINT("entered bsdudpclient \n\r");
    // sTestBufLen  = BUF_SIZE;
-       sTestBufLen  = 4;
+       sTestBufLen  = 10;
     //filling the UDP server socket address
     sAddr.sin_family = SL_AF_INET;
     sAddr.sin_port = sl_Htons((unsigned short)usPort);
@@ -499,10 +499,11 @@ UART_PRINT("entered bsdudpclient \n\r");
 while (1)
 {
     UART_PRINT("in loop \n\r");
-
-	//sprintf(spstr,"%d",myStrC[index]);
+    for(index=0;index<50;index++)
+    {
+	sprintf(spstr,"%d",myStrC[index]);
 	// sending packet
-        iStatus = sl_SendTo(iSockID, stringbuf , sTestBufLen, 0,
+        iStatus = sl_SendTo(iSockID, spstr , sTestBufLen, 0,
                                 (SlSockAddr_t *)&sAddr, iAddrSize);
         if( iStatus <= 0 )
         {
@@ -510,8 +511,10 @@ while (1)
             sl_Close(iSockID);
             ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
         }
-        lLoopCount++;index++;
-}
+        index=0;
+        lLoopCount++;
+    }
+    }
 
     UART_PRINT("Sent %u packets successfully\n\r",g_ulPacketCount);
 

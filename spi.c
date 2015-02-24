@@ -64,7 +64,7 @@ static void SlaveIntHandler()
 	unsigned int index = 0;
 
 
-		    check++;
+		  //  check++;
 		    //
 		    // Read the interrupt status of the SPI.
 		    //

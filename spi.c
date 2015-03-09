@@ -52,19 +52,21 @@ unsigned short myStrA[50];
 unsigned short myStrB[50];
 unsigned short myStrC[50];
 
+unsigned long ulStatReg;
 unsigned int index = 0;
-unsigned int index2 = 0;
-unsigned int check=0;
+unsigned int flag = 0;
+unsigned short check_cmd=11;
+
+unsigned char bufA[4];
+
 unsigned long ulStatus;
 		    unsigned long ulMode;
 static void SlaveIntHandler()
 {
 
-
 	unsigned int index = 0;
 
 
-		  //  check++;
 		    //
 		    // Read the interrupt status of the SPI.
 		    //
@@ -75,11 +77,14 @@ static void SlaveIntHandler()
 		    //
 		    //	MAP_SPIIntClear(GSPI_BASE,ulStatus);
 		   		//    MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX|SPI_INT_DMATX);
+		 //   MAP_SPIIntClear(GSPI_BASE,SPI_INT_TX_EMPTY);
+
 		   	    MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX);
 		   		//    MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMATX);
 			   	//	  MAP_SPIIntDisable(GSPI_BASE,SPI_INT_DMARX);
 
 		  // 		  MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMARX);
+
 
 
 		    //
@@ -96,11 +101,22 @@ static void SlaveIntHandler()
 		    //
 		    if(ulMode == UDMA_MODE_STOP)
 		    {
+		    	if (myStrA[0]==11)
+	    	{flag++;
+
+	    	 MAP_SPIDataPut(GSPI_BASE,'AB');
+
+
+	    		 //   	 MAP_SPIDataPut(GSPI_BASE,'CD');
+
+
+	    	}
 
 		    	for (index=0;index<50;index++)
-		    	{ myStrC[index]=myStrA[index];
+		    			    			    	{ myStrC[index]=myStrA[index];
 
-		    	}
+		    			    			    	}
+
 		    	// BsdUdpClient(5001);
 		        //
 		        // Set up the next transfer for the "A" buffer, using the primary
@@ -108,7 +124,7 @@ static void SlaveIntHandler()
 		        // done, the uDMA controller will switch back to this one.
 		        //
 		    	  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-		    	              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_4,
+		    	              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_1,
 		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 		    	              myStrA, UDMA_DST_INC_16);
 
@@ -132,13 +148,15 @@ static void SlaveIntHandler()
 		    			    	{ myStrC[index]=myStrB[index];
 
 		    			    	}
-		        //
+		    //	 MAP_SPIDataPut(GSPI_BASE,'B');
+
+		    	//
 		        // Set up the next transfer for the "B" buffer, using the alternate
 		        // control structure.  When the ongoing receive into the "A" buffer is
 		        // done, the uDMA controller will switch back to this one.
 		        //
 		   	  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-		  		    	              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_4,
+		  		    	              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_1,
 		  		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 		  		    	              myStrB, UDMA_DST_INC_16);
 
@@ -174,22 +192,23 @@ void SlaveMain()
                      (SPI_HW_CTRL_CS |
                      SPI_4PIN_MODE |
                      SPI_TURBO_OFF |
-                     SPI_CS_ACTIVEHIGH |
+                     SPI_CS_ACTIVELOW |
                      SPI_WL_16));
 
   //
   // Register Interrupt Handler
   //
- MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);//Disable SPI Interrupts
+ MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
+
 
 
   SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_4,
+              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_1,
               (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
               myStrA, UDMA_DST_INC_16);
 
   SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_4,
+              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_1,
               (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
               myStrB, UDMA_DST_INC_16);
 
@@ -199,11 +218,12 @@ void SlaveMain()
   SPIDmaEnable(GSPI_BASE,SPI_RX_DMA);
 
 
+
   //
   // Enable Interrupts
   //
-  MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMARX);
-
+  MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMARX|SPI_INT_TX_EMPTY);
+ // MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL);
   //
   // Enable SPI for communication
   //

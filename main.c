@@ -501,10 +501,10 @@ while (1)
     UART_PRINT("in loop \n\r");
     for(index=0;index<50;index++)
     {
-	sprintf(spstr,"%d",myStrC[index]);
+	//sprintf(spstr,"%d",myStrC[index]);
 	// sending packet
-        iStatus = sl_SendTo(iSockID, spstr , sTestBufLen, 0,
-                                (SlSockAddr_t *)&sAddr, iAddrSize);
+ //       iStatus = sl_SendTo(iSockID, spstr , sTestBufLen, 0,
+    //                            (SlSockAddr_t *)&sAddr, iAddrSize);
         if( iStatus <= 0 )
         {
             // error
@@ -633,6 +633,10 @@ void main()
 
     InitializeAppVariables();
 
+
+    UART_PRINT("entering spi config");
+            spi();
+              UART_PRINT("returned from spi config");
     //
     // Following function configure the device to default state by cleaning
     // the persistent settings stored in NVMEM (viz. connection profiles &
@@ -688,6 +692,10 @@ void main()
                 SL_IPV4_BYTE(g_ulIpAddr,2),
                 SL_IPV4_BYTE(g_ulIpAddr,1),
                 SL_IPV4_BYTE(g_ulIpAddr,0));
+
+
+
+
 /*
 #ifdef USER_INPUT_ENABLE
 //    lRetVal = UserInput();
@@ -723,10 +731,7 @@ void main()
    // BsdUdpClient(5001);
 
 
-    UART_PRINT("entering spi config");
-           spi();
-             UART_PRINT("returned from spi config");
-BsdUdpClient(5001);
+//BsdUdpClient(5001);
 
     // power off the network processor
     //

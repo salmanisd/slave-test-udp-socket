@@ -55,6 +55,7 @@ typedef enum{
 //                      LOCAL FUNCTION PROTOTYPES
 //****************************************************************************
 int BsdUdpClient(unsigned short usPort);
+int BsdUdpServer(unsigned short usPort);
 static long WlanConnect();
 //static void DisplayBanner();
 static void BoardInit();
@@ -80,6 +81,8 @@ char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsi
 extern unsigned short myStrA[50];				//Holds string from master over SPI
 extern unsigned short myStrB[50];				//Holds string from master over SPI
 extern unsigned short myStrC[50];
+
+unsigned long rx_udp_server[50];
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
 #endif
@@ -409,7 +412,17 @@ static long ConfigureSimpleLinkToDefaultState()
     }
 
     // Enable DHCP client
-    lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
+ //   lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
+  //  ASSERT_ON_ERROR(lRetVal);
+
+    SlNetCfgIpV4Args_t ipV4;
+    ipV4.ipV4 = (unsigned long)SL_IPV4_VAL(192,168,173,54); // unsigned long IP  address
+    ipV4.ipV4Mask = (unsigned long)SL_IPV4_VAL(255,255,255,0); // unsigned long Subnet mask for this AP/P2P
+    ipV4.ipV4Gateway = (unsigned long)SL_IPV4_VAL(192,168,173,0); // unsigned long Default gateway address
+    ipV4.ipV4DnsServer = (unsigned long)SL_IPV4_VAL(160,85,193,100); // unsigned long DNS server address
+    lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (unsigned char *) &ipV4);
+    sl_Stop(0);
+    sl_Start(NULL,NULL,NULL);
     ASSERT_ON_ERROR(lRetVal);
 
     // Disable scan
@@ -445,7 +458,89 @@ static long ConfigureSimpleLinkToDefaultState()
 
     return lRetVal; // Success
 }
+//****************************************************************************
+//
+//! \brief Opening a UDP server side socket and receiving data
+//!
+//! This function opens a UDP socket in Listen mode and waits for an incoming
+//! UDP connection.
+//!    If a socket connection is established then the function will try to
+//!    read 1000 UDP packets from the connected client.
+//!
+//! \param[in]          port number on which the server will be listening on
+//!
+//! \return             0 on success, Negative value on Error.
+//
+//****************************************************************************
+int BsdUdpServer(unsigned short usPort)
+{
+    SlSockAddrIn_t  sAddr;
+    SlSockAddrIn_t  sLocalAddr;
+    int             iCounter;
+    int             iAddrSize;
+    int             iSockID;
+    int             iStatus;
+    long            lLoopCount = 0;
+    short           sTestBufLen;
+    int 			index=0;
+int match=0;
 
+
+    sTestBufLen  = BUF_SIZE;
+
+    //filling the UDP server socket address
+    sLocalAddr.sin_family = SL_AF_INET;
+    sLocalAddr.sin_port = sl_Htons((unsigned short)usPort);
+    sLocalAddr.sin_addr.s_addr = 0;
+
+    iAddrSize = sizeof(SlSockAddrIn_t);
+
+    // creating a UDP socket
+    iSockID = sl_Socket(SL_AF_INET,SL_SOCK_DGRAM, 0);
+    if( iSockID < 0 )
+    {
+        // error
+        ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+    }
+
+    // binding the UDP socket to the UDP server address
+    iStatus = sl_Bind(iSockID, (SlSockAddr_t *)&sLocalAddr, iAddrSize);
+    if( iStatus < 0 )
+    {
+        // error
+        sl_Close(iSockID);
+        ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+    }
+
+    // no listen or accept is required as UDP is connectionless protocol
+    /// waits for packets from a UDP client
+    unsigned long *iter=rx_udp_server;
+    do
+    {
+
+        iStatus = sl_RecvFrom(iSockID, iter, 4, 0,
+                     ( SlSockAddr_t *)&sAddr, (SlSocklen_t*)&iAddrSize );
+//index=index+2;*rx
+        if( iStatus < 0 )
+    {
+        // error
+        sl_Close(iSockID);
+        ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+    }
+    lLoopCount++;
+    }while (*iter++!=0x00004141);
+
+    UART_PRINT("Recieved packets successfully\n\r");
+    //rx_udp_server[10]=sl_Ntohl((unsigned long) rx_udp_server[0]);
+	if (sl_Ntohl((unsigned long) rx_udp_server[0])=='ABCD')
+    UART_PRINT("Matched \n\r");
+	else
+		UART_PRINT("Not Matched");
+    //closing the socket
+    sl_Close(iSockID);
+
+    return SUCCESS;
+}
 
 //****************************************************************************
 //
@@ -520,6 +615,7 @@ while (1)
 
     //closing the socket after sending 1000 packets
     sl_Close(iSockID);
+
 
     return SUCCESS;
 }
@@ -635,7 +731,7 @@ void main()
 
 
     UART_PRINT("entering spi config");
-            spi();
+       //     spi();
               UART_PRINT("returned from spi config");
     //
     // Following function configure the device to default state by cleaning
@@ -723,15 +819,14 @@ void main()
 
     UART_PRINT("Exiting Application ...\n\r");
 */
-  //  while (myStr[0]>1250);
+
 
     //
 
-      //  UART_PRINT("opening client");
+        UART_PRINT("opening server");
    // BsdUdpClient(5001);
 
-
-//BsdUdpClient(5001);
+    BsdUdpServer(5000);
 
     // power off the network processor
     //

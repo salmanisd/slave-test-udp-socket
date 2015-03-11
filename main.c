@@ -520,7 +520,6 @@ int match=0;
 
         iStatus = sl_RecvFrom(iSockID, iter, 4, 0,
                      ( SlSockAddr_t *)&sAddr, (SlSocklen_t*)&iAddrSize );
-//index=index+2;*rx
         if( iStatus < 0 )
     {
         // error
@@ -731,7 +730,7 @@ void main()
 
 
     UART_PRINT("entering spi config");
-       //     spi();
+            spi();
               UART_PRINT("returned from spi config");
     //
     // Following function configure the device to default state by cleaning
@@ -823,10 +822,10 @@ void main()
 
     //
 
-        UART_PRINT("opening server");
+     //   UART_PRINT("opening server");
    // BsdUdpClient(5001);
 
-    BsdUdpServer(5000);
+ //   BsdUdpServer(5000);
 
     // power off the network processor
     //

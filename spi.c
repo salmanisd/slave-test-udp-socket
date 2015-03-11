@@ -22,7 +22,7 @@
 
 
 
-#define SPI_IF_BIT_RATE  100000
+#define SPI_IF_BIT_RATE  20000000
 #define TR_BUFF_SIZE     50
 
 //testing first commit
@@ -231,6 +231,81 @@ void SlaveMain()
 
 
 }
+//*****************************************************************************
+//
+//! SPI Master mode main loop
+//!
+//! This function configures SPI modelue as master and enables the channel for
+//! communication
+//!
+//! \return None.
+//
+//*****************************************************************************
+
+void MasterMain()
+{
+	// unsigned long ulUserData;
+	    unsigned long ulDummy;
+unsigned int i=0;
+    //
+    // Reset SPI
+    //
+    MAP_SPIReset(GSPI_BASE);
+
+    //
+    // Configure SPI interface
+    //
+    MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
+                     SPI_IF_BIT_RATE,SPI_MODE_MASTER,SPI_SUB_MODE_0,
+                     (SPI_SW_CTRL_CS |
+                     SPI_4PIN_MODE |
+                     SPI_TURBO_OFF |
+                     SPI_CS_ACTIVELOW |
+                     SPI_WL_16));
+
+    //
+    // Enable SPI for communication
+    //
+    MAP_SPIEnable(GSPI_BASE);
+
+
+
+
+
+
+    //
+    // Send the string to slave. Chip Select(CS) needs to be
+    // asserted at start of transfer and deasserted at the end.
+    //
+   // MAP_SPITransfer(GSPI_BASE,g_ucTxBuff,g_ucRxBuff,50,
+  //          SPI_CS_ENABLE|SPI_CS_DISABLE);
+
+
+
+    //
+    // Enable Chip select
+    //
+    MAP_SPICSEnable(GSPI_BASE);
+
+  while (i<10)
+  {
+
+        // Push the character over SPI
+        //
+        MAP_SPIDataPut(GSPI_BASE,'P');
+
+        //
+        // Clean up the receive register into a dummy
+        // variable
+        //
+        MAP_SPIDataGet(GSPI_BASE,&ulDummy);
+i++;
+  }
+    //
+    // Disable chip select
+    //
+    MAP_SPICSDisable(GSPI_BASE);
+}
 
 //*****************************************************************************
 //
@@ -266,8 +341,10 @@ void spi()
   //
   MAP_PRCMPeripheralReset(PRCM_GSPI);
 
-  SlaveMain();
+//  SlaveMain();
 
+
+ MasterMain();
 
 
 

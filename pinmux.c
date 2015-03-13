@@ -80,7 +80,6 @@ PinMuxConfig(void)
     // Configure PIN_06 for SPI0 GSPI_MISO
     //
     MAP_PinTypeSPI(PIN_06, PIN_MODE_7);
-
     //
     // Configure PIN_07 for SPI0 GSPI_MOSI
     //

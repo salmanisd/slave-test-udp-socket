@@ -82,6 +82,9 @@ extern unsigned short myStrA[50];				//Holds string from master over SPI
 extern unsigned short myStrB[50];				//Holds string from master over SPI
 extern unsigned short myStrC[50];
 
+extern unsigned short tx_dummy_strA[50];
+extern unsigned short tx_dummy_strB[50];
+
 unsigned long rx_udp_server[50];
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
@@ -730,7 +733,7 @@ void main()
 
 
     UART_PRINT("entering spi config");
-            spi();
+           spi();
               UART_PRINT("returned from spi config");
     //
     // Following function configure the device to default state by cleaning

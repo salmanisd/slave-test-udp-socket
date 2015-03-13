@@ -15,7 +15,6 @@
 #include "prcm.h"
 #include "utils.h"
 #include "uart.h"
-
 // common interface includes
 #include "udma_if.h"
 #include "common.h"
@@ -24,6 +23,7 @@
 #endif
 
 #include "pinmux.h"
+#include "spi.h"
 
 
 #define APPLICATION_NAME        "UDP Socket"
@@ -62,7 +62,8 @@ static void BoardInit();
 static void InitializeAppVariables();
 static long ConfigureSimpleLinkToDefaultState();
 void spi();
-
+void send_cmd_spi();
+void ms_delay(int ms);
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
 //*****************************************************************************
@@ -84,6 +85,8 @@ extern unsigned short myStrC[50];
 
 extern unsigned short tx_dummy_strA[50];
 extern unsigned short tx_dummy_strB[50];
+
+unsigned int spi_ret;
 
 unsigned long rx_udp_server[50];
 #if defined(ccs) || defined(gcc)
@@ -111,6 +114,14 @@ extern uVectorEntry __vector_table;
 //! \return None
 //!
 //*****************************************************************************
+void ms_delay(int ms) {
+              while (ms-- > 0) {
+                 volatile int x=5971;
+                 while (x-- > 0)
+                    __asm("nop");
+              }
+           }
+
 void SimpleLinkWlanEventHandler(SlWlanEvent_t *pWlanEvent)
 {
     if(!pWlanEvent)
@@ -730,11 +741,18 @@ void main()
   //  DisplayBanner(APPLICATION_NAME);
 
     InitializeAppVariables();
+ //   UART_PRINT("spi");
 
 
-    UART_PRINT("entering spi config");
-           spi();
-              UART_PRINT("returned from spi config");
+//      UART_PRINT("enter spi");
+//    spi();
+//      UART_PRINT("exit spi");
+
+//ms_delay(10000);
+UART_PRINT("end delay");
+send_cmd_spi();
+
+
     //
     // Following function configure the device to default state by cleaning
     // the persistent settings stored in NVMEM (viz. connection profiles &

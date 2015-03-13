@@ -1,5 +1,4 @@
 
-
 #include <string.h>
 #include "hw_types.h"
 #include "hw_memmap.h"
@@ -22,14 +21,12 @@
 
 
 
-#define SPI_IF_BIT_RATE  24000000
+#define SPI_IF_BIT_RATE  100000
 #define TR_BUFF_SIZE     50
 
 //testing first commit
 //*****************************************************************************
 // Global variables
-
-
 //*****************************************************************************
 
 #if defined(ccs)
@@ -39,9 +36,6 @@ extern void (* const g_pfnVectors[])(void);
 #if defined(ewarm)
 extern uVectorEntry __vector_table;
 #endif
-
-
- //*********************5*******************************************************
 
 //*****************************************************************************
 //
@@ -57,22 +51,19 @@ unsigned short myStrA[50];
 unsigned short myStrB[50];
 unsigned short myStrC[50];
 
-unsigned short tx_dummy_strA[50];
-unsigned short tx_dummy_strB[50];
-
 unsigned long ulStatReg;
 unsigned int index = 0;
 unsigned int flag = 0;
 unsigned short check_cmd=11;
 
 unsigned char bufA[4];
-unsigned char ulDummy[5];
-unsigned char ulSend[5];
-
 
 unsigned long ulStatus;
 		    unsigned long ulMode;
 
+		    static unsigned short g_ucTxBuff[3];
+		    static unsigned short g_ucRxBuff[3];
+		static unsigned int inde=0;
 
 static void SlaveIntHandler()
 {
@@ -114,7 +105,6 @@ static void SlaveIntHandler()
 		    //
 		    if(ulMode == UDMA_MODE_STOP)
 		    {
-
 		    	if (myStrA[0]==11)
 	    	{flag++;
 
@@ -178,102 +168,6 @@ static void SlaveIntHandler()
 		    }
 
 }
-//*********************5*******************************************************
-
-static void MasterIntHandler()
-		    {
-
-		    	unsigned int index = 0;
-
-
-		    		    //
-		    		    // Read the interrupt status of the SPI.
-		    		    //
-		    		    ulStatus = MAP_SPIIntStatus(GSPI_BASE,true);
-
-
-		    		   	 MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX|SPI_INT_DMATX);
-
-if (ulStatus & SPI_INT_DMATX)
-{
-		    		    ulMode = MAP_uDMAChannelModeGet(UDMA_CH31_GSPI_TX | UDMA_PRI_SELECT);
-
-		    		    if(ulMode == UDMA_MODE_STOP)
-		    		    {
-
-
-
-		    		        SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-		    		                      sizeof(tx_dummy_strA),UDMA_SIZE_16, UDMA_ARB_1,
-		    		                      tx_dummy_strA, UDMA_SRC_INC_16,
-		    		                      (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);
-
-		    		    }
-
-
-		    		    ulMode = MAP_uDMAChannelModeGet(UDMA_CH31_GSPI_TX | UDMA_ALT_SELECT);
-
-		    		    if(ulMode == UDMA_MODE_STOP)
-		    		    {
-
-
-		    		    	 SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-		    		    			    sizeof(tx_dummy_strB),UDMA_SIZE_16, UDMA_ARB_1,
-		    		    			    tx_dummy_strB, UDMA_SRC_INC_16,
-		    		    			    (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);
-
-
-		    		    }
-}
-
-if (ulStatus & SPI_INT_DMARX)
-{
-		    		    ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT);
-
-
-		    		   		    if(ulMode == UDMA_MODE_STOP)
-		    		   		    {
-
-
-
-		    		   		    	for (index=0;index<50;index++)
-		    		   		    			    			    	{ myStrC[index]=myStrA[index];
-
-		    		   		    			    			    	}
-
-
-		    		   		    	  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-		    		   		    	              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_1,
-		    		   		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-		    		   		    	              myStrA, UDMA_DST_INC_16);
-
-		    		   		    }
-
-
-		    		   		    ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT);
-
-		    		   		    if(ulMode == UDMA_MODE_STOP)
-		    		   		    {
-
-		    		   		    	for (index=0;index<50;index++)
-		    		   		    			    	{ myStrC[index]=myStrB[index];
-
-		    		   		    			    	}
-
-		    		   		   	  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-		    		   		  		    	              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_1,
-		    		   		  		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-		    		   		  		    	              myStrB, UDMA_DST_INC_16);
-
-
-		    		   		    }
-
-
-
-
-
-}
-		    }
 
 //*****************************************************************************
 //
@@ -287,6 +181,7 @@ if (ulStatus & SPI_INT_DMARX)
 //*****************************************************************************
 void SlaveMain()
 {
+
 
   //
   // Reset SPI
@@ -340,130 +235,44 @@ void SlaveMain()
 
 
 }
+
+
 //*****************************************************************************
 //
-//! SPI Master mode main loop
+//!COmmand MODE SPI
 //!
-//! This function configures SPI modelue as master and enables the channel for
-//! communication
+//! \param none
 //!
 //! \return None.
 //
 //*****************************************************************************
-
-void MasterMain()
+void send_cmd_spi()
 {
-	// unsigned long ulUserData;
-unsigned int i=0;
-unsigned int j=0;
-unsigned long recv=0;
-//
 
-
-for ( j=0;j<50;j++)
-{
-tx_dummy_strA[j]=0xFFFF;
-}
-
-for ( j=0;j<50;j++)
-{
-tx_dummy_strB[j]=0xFFFF;
-
-}
-
-
-    // Reset SPI
-    //
+	MAP_SPIDisable(GSPI_BASE);
     MAP_SPIReset(GSPI_BASE);
 
-    //
-    // Configure SPI interface
-    //
-    MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
-    		SPI_IF_BIT_RATE,SPI_MODE_MASTER,SPI_SUB_MODE_0,
-                     (SPI_SW_CTRL_CS |
-                     SPI_4PIN_MODE |
-                     SPI_TURBO_OFF|
-                     SPI_CS_ACTIVELOW |
-                     SPI_WL_16));
-
-    //
-      // Register Interrupt Handler
-      //
-
-     MAP_SPIIntRegister(GSPI_BASE,MasterIntHandler);
-
-     SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-                 sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_1,
-                 (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-                 myStrA, UDMA_DST_INC_16);
-
-     SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-                 sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_1,
-                 (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-                 myStrB, UDMA_DST_INC_16);
-
-
-     SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-                 sizeof(tx_dummy_strA),UDMA_SIZE_16, UDMA_ARB_1,
-                 tx_dummy_strA, UDMA_SRC_INC_16,
-                 (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);
-
-     SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-   		  	  sizeof(tx_dummy_strB),UDMA_SIZE_16, UDMA_ARB_1,
-   		       tx_dummy_strB, UDMA_SRC_INC_16,
-   		      (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);
-
-
-
-      SPIDmaEnable(GSPI_BASE,SPI_RX_DMA|SPI_TX_DMA);
-
-
-
-      //
-      // Enable Interrupts
-      //
-      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMARX|SPI_INT_DMATX);
+	    //
+	    // Configure SPI interface
+	    //
+	    MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
+	                         SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
+	                         (SPI_HW_CTRL_CS |
+	                         SPI_4PIN_MODE |
+	                         SPI_TURBO_OFF |
+	                         SPI_CS_ACTIVELOW |
+	                         SPI_WL_16));
 
 
 
 
-    // Enable SPI for communication
-            //
-            MAP_SPIEnable(GSPI_BASE);
+	  MAP_SPIEnable(GSPI_BASE);
+	  MAP_SPIDataPut(GSPI_BASE,'BC');
+	  MAP_SPIDataPut(GSPI_BASE,'GH');
 
-           MAP_SPICSEnable(GSPI_BASE);
-/*
-    //
-    // Send the string to slave. Chip Select(CS) needs to be
-    // asserted at start of transfer and deasserted at the end.
-    //
-    ulSend[0]=0xA5;
-    ulSend[1]=0xF5;
-
-    MAP_SPITransfer(GSPI_BASE,&ulSend[0],&ulDummy[0],1,SPI_CS_ENABLE|SPI_CS_DISABLE);
-//    MAP_SPITransfer(GSPI_BASE,&ulSend[1],&ulDummy[1],1,SPI_CS_ENABLE|SPI_CS_DISABLE);
-
- */
-/*
-
-    ulDummy[0]=0;
-    //
-    // Enable Chip select
-    //
-  MAP_SPICSEnable(GSPI_BASE);
-
-        // Push the character over SPI
-        //
-        MAP_SPIDataPut(GSPI_BASE,0x50);
-     MAP_SPIDataGet(GSPI_BASE,&ulDummy[0]);
-
-       MAP_SPICSDisable(GSPI_BASE);
-
-       MAP_SPIDisable(GSPI_BASE);
-*/
 
 }
+
 
 //*****************************************************************************
 //
@@ -477,6 +286,15 @@ tx_dummy_strB[j]=0xFFFF;
 void spi()
 {
 
+  //
+  // Initialize Board configurations
+  //
+//BoardInit();
+	//UART_PRINT("Device started as STATION \n\r");
+  //
+  // Muxing  SPI lines.
+  //
+//  PinMuxConfig();
 
   //
   // Enable the SPI module clock
@@ -490,12 +308,9 @@ void spi()
   //
   MAP_PRCMPeripheralReset(PRCM_GSPI);
 
-//  SlaveMain();
+  SlaveMain();
 
-
- MasterMain();
 
 
 
 }
-

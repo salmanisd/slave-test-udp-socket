@@ -17,13 +17,17 @@
 #include "udma.h"
 #include "uart_if.h"
 #include "udma_if.h"
+#include "timer.h"
 
 
-
+// Common interface includes
+#include "timer_if.h"
+#include "gpio_if.h"///
 
 #define SPI_IF_BIT_RATE  100000
 #define TR_BUFF_SIZE     50
-
+#define TRUE 1
+#define FALSE 0
 //testing first commit
 //*****************************************************************************
 // Global variables
@@ -64,14 +68,14 @@ unsigned short recv_buff[10];
 
 unsigned char bufA[4];
 
-  volatile signed int h=-1;
+volatile unsigned int get_sync_cmd_resp=FALSE;
 		    unsigned long ulMode;
 
 
 		unsigned short response[2];
 
 
-
+		 unsigned long timervalue;
 
 static void SlaveIntHandler()
 				    {
@@ -108,7 +112,7 @@ static void SlaveIntHandler()
 
 				    		    					        	if(ulRecvData==0xFFFF)
 				    		    					        	{
-				    		    					        		h=1;
+				    		    					        		get_sync_cmd_resp=TRUE;
 				    		    					        		MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 				    		    					        	}
 
@@ -216,7 +220,9 @@ static void SlaveIntHandler()
 void SlaveMain()
 {
 
-	int j=0;
+
+
+			int j=0;
 
 for(j=0;j<50;j++)
 {
@@ -287,6 +293,8 @@ MAP_SPIDisable(GSPI_BASE);
   //
   MAP_SPIEnable(GSPI_BASE);
 
+	timervalue=	TimerValueGet(TIMERA0_BASE, TIMER_A);
+
 }
 
 
@@ -307,6 +315,13 @@ static void SyncIntHandler()
 //*****************************************************************************
 int sync_spi()
 {
+
+	TimerConfigure(TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP);
+	    // Configuring the timers
+	    //
+	//    Timer_IF_Init(PRCM_TIMERA0, g_ulBase, TIMER_CFG_PERIODIC, TIMER_A, 0);
+
+
 	signed int j=-1;
 	// Enable the SPI module clock
 		  //
@@ -342,48 +357,22 @@ int sync_spi()
 	      //
 	      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 
+
+
 	      //
 	      // Enable SPI for communication
 	      //
 	      MAP_SPIEnable(GSPI_BASE);
-
+/*
 while(j==-1)
 {
 	j=h;
 }
-return 1;
-	      /*
-MAP_SPIEnable(GSPI_BASE);
-do {
-
-	  MAP_SPIDataPut(GSPI_BASE,0xABCD);
-		  while(!(HWREG(GSPI_BASE + MCSPI_O_CH0STAT) & MCSPI_CH0STAT_RXS))
-		   {
-		   }
-	//	  MAP_SPIDataGet(GSPI_BASE,&response[1]);
-		  while(!(HWREG(GSPI_BASE + MCSPI_O_CH0STAT) & MCSPI_CH0STAT_RXS))
-		   {
-		   }
-
-		   //
-		   // Read the value
-		   //
-		   response[1] = HWREG(GSPI_BASE + MCSPI_O_RX0);
-
-		//   re=response[1];
-if(response[1]=='YZ')
-{ flag++;}
-
- }while(response[1]!='YZ');
-
-
-
-	  MAP_SPIDisable(GSPI_BASE);
-
-
-
-
 */
+	      while(get_sync_cmd_resp==FALSE);
+TimerEnable(TIMERA0_BASE, TIMER_A);
+return 1;
+
 
 }
 

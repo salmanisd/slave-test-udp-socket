@@ -15,6 +15,9 @@
 #include "prcm.h"
 #include "utils.h"
 #include "uart.h"
+#include "timer.h"
+#include "timer_if.h"
+
 // common interface includes
 #include "udma_if.h"
 #include "common.h"

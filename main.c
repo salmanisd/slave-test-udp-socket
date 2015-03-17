@@ -754,7 +754,6 @@ void main()
 
 //ms_delay(10000);
 UART_PRINT("end delay");
-
 SYNC=sync_spi();
 
 

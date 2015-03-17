@@ -53,7 +53,7 @@ extern uVectorEntry __vector_table;
 //*********************5*******************************************************
 unsigned short myStrA[50];
 unsigned short myStrB[50];
-unsigned short myStrC[50];
+unsigned short myStrC[100];
 
 unsigned short myStrX[50];
 unsigned short myStrY[50];
@@ -61,6 +61,7 @@ unsigned short myStrY[50];
 unsigned long ulStatReg;
 unsigned int index = 0;
 unsigned int flag = 0;
+volatile unsigned long chk_bufa_flag=0;
 unsigned short check_cmd=11;
 
 unsigned short ulRecvData;
@@ -74,7 +75,7 @@ volatile unsigned int get_sync_cmd_resp=FALSE;
 
 		unsigned short response[2];
 
-
+volatile unsigned long check_frame_start=0;
 		 unsigned long timervalue;
 
 static void SlaveIntHandler()
@@ -155,9 +156,12 @@ static void SlaveIntHandler()
 				    		    }
 		}
 
+
+		//PINGPONG SETUP TO RECEIEVE ADC VALUES
+
 		if (ulStatus & SPI_INT_DMARX)
 		{
-
+			chk_bufa_flag=1;
 		   	 MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX);
 
 				    		    ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT);
@@ -167,17 +171,29 @@ static void SlaveIntHandler()
 				    		   		    {
 
 
+				    		   		    	for (index=50;index<100;index++)
+				    		   						    		   		    	{
+				    		   						    		   		    		myStrC[index]=myStrA[index];
 
-				    		   		    	for (index=0;index<50;index++)
-				    		   		    			    			    	{ myStrC[index]=myStrA[index];
+				    		   						    		   		    		}
 
-				    		   		    			    			    	}
+				    		   						    		   		     if( (myStrA[0]==0xA5A5) && (myStrA[1]==0xA5A5) )
+
+				    		   						    		   		 			 check_frame_start++;
+
+				    		   						    		   		 			 else
+				    		   						    		   check_frame_start=0;
+
 
 
 				    		   		    	  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
 				    		   		    	              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_1,
 				    		   		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 				    		   		    	              myStrA, UDMA_DST_INC_16);
+
+
+
+
 
 				    		   		    }
 
@@ -187,15 +203,16 @@ static void SlaveIntHandler()
 				    		   		    if(ulMode == UDMA_MODE_STOP)
 				    		   		    {
 
-				    		   		    	for (index=0;index<50;index++)
-				    		   		    			    	{ myStrC[index]=myStrB[index];
 
-				    		   		    			    	}
+				    		   		     for (index=50;index<100;index++)
+				    		   		 { myStrC[index]=myStrB[index];
 
+				    		   		   	}
 				    		   		   	  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
 				    		   		  		    	              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_1,
 				    		   		  		    	              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 				    		   		  		    	              myStrB, UDMA_DST_INC_16);
+
 
 
 				    		   		    }
@@ -219,6 +236,7 @@ static void SlaveIntHandler()
 //*****************************************************************************
 void SlaveMain()
 {
+  //  ms_delay(1000);//1 msec
 
 
 
@@ -294,6 +312,7 @@ MAP_SPIDisable(GSPI_BASE);
   MAP_SPIEnable(GSPI_BASE);
 
 	timervalue=	TimerValueGet(TIMERA0_BASE, TIMER_A);
+
 
 }
 

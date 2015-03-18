@@ -80,7 +80,7 @@ unsigned long  g_ulPacketCount = UDP_PACKET_COUNT;
 unsigned char  g_ucSimplelinkstarted = 0;
 unsigned long  g_ulIpAddr = 0;
 unsigned short hh;
-int SYNC;
+extern int SYNC;
 char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;unsigned char spstr[];
 
 extern unsigned short myStrA[50];				//Holds string from master over SPI

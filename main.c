@@ -65,7 +65,7 @@ static void BoardInit();
 static void InitializeAppVariables();
 static long ConfigureSimpleLinkToDefaultState();
 void spi();
-int sync_spi();
+int reset_sync_spi();
 void ms_delay(int ms);
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
@@ -80,7 +80,7 @@ unsigned long  g_ulPacketCount = UDP_PACKET_COUNT;
 unsigned char  g_ucSimplelinkstarted = 0;
 unsigned long  g_ulIpAddr = 0;
 unsigned short hh;
-extern int SYNC;
+extern int Reset_SYNC;
 char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;unsigned char spstr[];
 
 extern unsigned short myStrA[50];				//Holds string from master over SPI
@@ -754,7 +754,7 @@ void main()
 
 //ms_delay(10000);
 UART_PRINT("end delay");
-SYNC=sync_spi();
+Reset_SYNC=reset_sync_spi();
 
 
 spi();

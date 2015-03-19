@@ -73,15 +73,16 @@ unsigned short recv_buff[10];
 
 unsigned char bufA[4];
 
-int SYNC;
+int Reset_SYNC;
 volatile unsigned int get_sync_cmd_resp=FALSE;
 		    unsigned long ulMode;
 
-
-		unsigned short response[2];
+unsigned short cmd_buffer[5];
+unsigned int cmd_index=0;
 
 volatile unsigned long check_frame_start=0;
-		 unsigned long timervalue;
+		 unsigned long pingpong_setup_t;
+		 unsigned long framesync_t;
 
 		 static void SlaveIntHandler()
 		 {
@@ -105,8 +106,10 @@ volatile unsigned long check_frame_start=0;
 			 if(ulStatus & SPI_INT_TX_EMPTY)
 			 {
 				 flag++;
-				 MAP_SPIDataPutNonBlocking(GSPI_BASE,0xABCD);
-
+				 MAP_SPIDataPut(GSPI_BASE,cmd_buffer[cmd_index]);
+				 cmd_index++;
+				 if ((cmd_index==5))
+					 MAP_SPIIntDisable(GSPI_BASE,SPI_INT_TX_EMPTY);
 			 }
 
 			 if(ulStatus & SPI_INT_RX_FULL)
@@ -118,8 +121,8 @@ volatile unsigned long check_frame_start=0;
 
 				 if(ulRecvData==0xFFFF)
 				 {
-					 get_sync_cmd_resp=TRUE;
-					 MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
+				//	 get_sync_cmd_resp=TRUE;
+			//		 MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 				 }
 
 
@@ -183,11 +186,18 @@ volatile unsigned long check_frame_start=0;
 					 }
 
 					 if( (myStrC[0]==0xA5A5) && (myStrC[1]==0xA5A5) )
-
+					 {
+						 framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
+						 						 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
 						 check_frame_start++;
 
+					 }
 					 else
-						frame_sync(); //check_frame_start=0;
+					 {
+
+
+						 frame_sync();//Reset_SYNC=reset_sync_spi();	// //check_frame_start=0;
+					 }
 
 
 
@@ -213,6 +223,22 @@ volatile unsigned long check_frame_start=0;
 					 { myStrC[index]=myStrB[index];
 
 					 }
+
+					 if( (myStrC[50]==0xA5A5) && (myStrC[51]==0xA5A5) )
+					 {
+						 framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
+						 MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
+						 check_frame_start++;
+
+					 }
+					 else
+					 {
+
+
+						 frame_sync();//Reset_SYNC=reset_sync_spi();	// //check_frame_start=0;
+					 }
+
+
 					 SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
 							 sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_1,
 							 (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
@@ -316,16 +342,14 @@ MAP_SPIDisable(GSPI_BASE);
   //
   MAP_SPIEnable(GSPI_BASE);
 
-	timervalue=	TimerValueGet(TIMERA0_BASE, TIMER_A);
+//	pingpong_setup_t=	TimerValueGet(TIMERA0_BASE, TIMER_A);
+
 
 
 }
 
 
 //*****************************************************************************
-static void SyncIntHandler()
-{
-}
 
 //*****************************************************************************
 //*****************************************************************************
@@ -337,12 +361,15 @@ static void SyncIntHandler()
 //! \return None.
 //
 //*****************************************************************************
-int sync_spi()
+int reset_sync_spi()
 {
 
-	//TimerConfigure(TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP);
-
-	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
+cmd_buffer[0]=0xABCD;
+cmd_buffer[1]=0x1234;
+cmd_buffer[2]=0x5678;
+cmd_buffer[3]=0x9efe;
+cmd_buffer[4]=0x2525;
+//	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
 
 	signed int j=-1;
 	// Enable the SPI module clock
@@ -377,8 +404,9 @@ int sync_spi()
 	      //
 	      // Enable Interrupts
 	      //
-	      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
+	//      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 
+	      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_TX_EMPTY);
 
 
 	      //
@@ -392,7 +420,7 @@ while(j==-1)
 }
 */
 	      while(get_sync_cmd_resp==FALSE);
-TimerEnable(TIMERA0_BASE, TIMER_A);
+//TimerEnable(TIMERA0_BASE, TIMER_A);
 return 1;
 
 
@@ -404,6 +432,9 @@ return 1;
 //*****************************************************************************
 void frame_sync()
 {
+	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
+							 	MAP_TimerEnable(TIMERA0_BASE, TIMER_A);
+
 MAP_SPIDisable(GSPI_BASE);
 	//
   // Reset SPI

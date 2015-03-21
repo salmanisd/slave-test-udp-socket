@@ -757,7 +757,7 @@ UART_PRINT("end delay");
 Reset_SYNC=reset_sync_spi();
 
 
-spi();
+//spi();
 UART_PRINT("starting 20sec delay");
 ms_delay(10000);
 ms_delay(10000);

@@ -78,7 +78,7 @@ volatile unsigned int get_sync_cmd_resp=FALSE;
 		    unsigned long ulMode;
 
 unsigned short cmd_buffer[5];
-unsigned int cmd_index=0;
+volatile unsigned int cmd_index=0;
 
 volatile unsigned long check_frame_start=0;
 		 unsigned long pingpong_setup_t;
@@ -103,13 +103,21 @@ volatile unsigned long check_frame_start=0;
 
 			 MAP_SPIIntClear(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 
-			 if(ulStatus & SPI_INT_TX_EMPTY)
+			 if( (ulStatus & SPI_INT_TX_EMPTY)&&(get_sync_cmd_resp==FALSE) )
 			 {
 				 flag++;
 				 MAP_SPIDataPut(GSPI_BASE,cmd_buffer[cmd_index]);
+
+
+				 }
+
+			 if ( (ulStatus & SPI_INT_TX_EMPTY)&&(get_sync_cmd_resp==TRUE) )
+			 {
 				 cmd_index++;
+				 MAP_SPIDataPut(GSPI_BASE,cmd_buffer[cmd_index]);
+
 				 if ((cmd_index==5))
-					 MAP_SPIIntDisable(GSPI_BASE,SPI_INT_TX_EMPTY);
+				MAP_SPIIntDisable(GSPI_BASE,SPI_INT_TX_EMPTY);
 			 }
 
 			 if(ulStatus & SPI_INT_RX_FULL)
@@ -121,7 +129,7 @@ volatile unsigned long check_frame_start=0;
 
 				 if(ulRecvData==0xFFFF)
 				 {
-				//	 get_sync_cmd_resp=TRUE;
+					 get_sync_cmd_resp=TRUE;
 			//		 MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 				 }
 
@@ -406,7 +414,7 @@ cmd_buffer[4]=0x2525;
 	      //
 	//      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 
-	      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_TX_EMPTY);
+	      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_TX_EMPTY|SPI_INT_RX_FULL);
 
 
 	      //
@@ -419,7 +427,8 @@ while(j==-1)
 	j=h;
 }
 */
-	      while(get_sync_cmd_resp==FALSE);
+	      while(1);
+	 //     while(get_sync_cmd_resp==FALSE);
 //TimerEnable(TIMERA0_BASE, TIMER_A);
 return 1;
 

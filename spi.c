@@ -54,6 +54,11 @@ extern uVectorEntry __vector_table;
 void frame_sync();
 void spi();
 
+extern struct Command {
+	unsigned short opcode;
+	unsigned short len;
+	unsigned short descriptor;
+};
 
 unsigned short myStrA[50];
 unsigned short myStrB[50];
@@ -108,7 +113,7 @@ volatile unsigned long check_frame_start=0;
 			 if( (ulStatus & SPI_INT_TX_EMPTY)&&(get_sync_cmd_resp==FALSE) )
 			 {
 				 flag++;
-				 MAP_SPIDataPut(GSPI_BASE,0xABCD);
+				 MAP_SPIDataPut(GSPI_BASE,0xFFFF);
 
 
 				 }
@@ -121,7 +126,8 @@ volatile unsigned long check_frame_start=0;
 				 if (cmd_index==5)
 				 {
 			 MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
-				 cmd_sent=TRUE;
+
+			 cmd_sent=TRUE;
 				 }
 				 }
 
@@ -366,13 +372,23 @@ MAP_SPIDisable(GSPI_BASE);
 //send_cmd();
 //*****************************************************************************
 
-void send_cmd()
+void send_cmd(struct Command *CMD_Number)
 {
+
+	cmd_sent=FALSE;
+	cmd_index=0;
+
 	cmd_buffer[0]=0xABCD;
-	cmd_buffer[1]=0x1234;
-	cmd_buffer[2]=0x5678;
-	cmd_buffer[3]=0x9efe;
+	cmd_buffer[1]=CMD_Number->opcode;
+	cmd_buffer[2]=CMD_Number->len;
+	cmd_buffer[3]=CMD_Number->descriptor;
 	cmd_buffer[4]=0x2525;
+
+	/*cmd_buffer[0]=0x3245;
+				cmd_buffer[1]=0x8973;
+				cmd_buffer[2]=0x6AC7;
+				cmd_buffer[3]=0x9342;*/
+
 
 MAP_SPIDisable(GSPI_BASE);
 	//
@@ -423,6 +439,8 @@ MAP_SPIDisable(GSPI_BASE);
 int reset_sync_spi()
 {
 
+
+	get_sync_cmd_resp=FALSE;
 
 //	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
 
@@ -476,7 +494,7 @@ while(j==-1)
 */
 	    //  while(1);
 	    while(get_sync_cmd_resp==FALSE);
-	    send_cmd();
+
 //TimerEnable(TIMERA0_BASE, TIMER_A);
 return 1;
 

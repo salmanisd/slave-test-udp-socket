@@ -47,6 +47,15 @@ typedef enum{
     STATUS_CODE_MAX = -0xBB8
 }e_AppStatusCodes;
 
+
+extern struct Command {
+	unsigned short opcode;
+	unsigned short len;
+	unsigned short descriptor;
+};
+
+
+
 //****************************************************************************
 //                      Receiver Wireless Settings
 //SSID Name= forticc
@@ -80,6 +89,8 @@ unsigned long  g_ulPacketCount = UDP_PACKET_COUNT;
 unsigned char  g_ucSimplelinkstarted = 0;
 unsigned long  g_ulIpAddr = 0;
 unsigned short hh;
+
+unsigned long udp_loop;
 extern int Reset_SYNC;
 char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;unsigned char spstr[];
 
@@ -492,6 +503,7 @@ static long ConfigureSimpleLinkToDefaultState()
 //****************************************************************************
 int BsdUdpServer(unsigned short usPort)
 {
+
     SlSockAddrIn_t  sAddr;
     SlSockAddrIn_t  sLocalAddr;
     int             iCounter;
@@ -505,6 +517,8 @@ int match=0;
 
 
     sTestBufLen  = BUF_SIZE;
+
+
 
     //filling the UDP server socket address
     sLocalAddr.sin_family = SL_AF_INET;
@@ -533,10 +547,24 @@ int match=0;
     // no listen or accept is required as UDP is connectionless protocol
     /// waits for packets from a UDP client
     unsigned long *iter=rx_udp_server;
+
+    struct Command CMD_01;
+            	    struct Command CMD_02;
+
+            	    CMD_01.opcode=0x0001; //1 to start transmission
+            	    CMD_01.len=0x0040; //length 64 bits
+            	    CMD_01.descriptor=0x6789; //fixed to 6789 for now
+
+            	    CMD_02.opcode=0x0002; //2 to stop transmission
+            	    CMD_02.len=0x0040; //length 64 bits
+            	    CMD_02.descriptor=0x6789; //fixed to 6789 for now
+
+
+
     do
     {
 
-        iStatus = sl_RecvFrom(iSockID, iter, 4, 0,
+        iStatus = sl_RecvFrom(iSockID, iter, 2, 0,
                      ( SlSockAddr_t *)&sAddr, (SlSocklen_t*)&iAddrSize );
         if( iStatus < 0 )
     {
@@ -544,7 +572,25 @@ int match=0;
         sl_Close(iSockID);
         ASSERT_ON_ERROR(UCP_SERVER_FAILED);
     }
-    lLoopCount++;
+
+
+        if (iStatus>0)
+         {
+        	    if (*iter==0x00000041)
+        	    {	 Reset_SYNC=reset_sync_spi();
+
+        	 send_cmd(&CMD_01);}
+
+        	 if (*iter==0x00000042)
+        	 {	 Reset_SYNC=reset_sync_spi();
+
+            	 send_cmd(&CMD_02);
+        	 }
+         }
+
+
+
+        udp_loop++;
     }while (*iter++!=0x00004141);
 
     UART_PRINT("Recieved packets successfully\n\r");
@@ -716,6 +762,7 @@ BoardInit(void)
 //*****************************************g***********************************
 void main()
 {
+
     long lRetVal = -1;
 
     //
@@ -747,21 +794,18 @@ void main()
     InitializeAppVariables();
  //   UART_PRINT("spi");
 
-
+//    Reset_SYNC=reset_sync_spi();
 //      UART_PRINT("enter spi");
  //   spi();
 //      UART_PRINT("exit spi");
 
 //ms_delay(10000);
-UART_PRINT("end delay");
-Reset_SYNC=reset_sync_spi();
+//UART_PRINT("end delay");
+
 
 
 //spi();
-UART_PRINT("starting 20sec delay");
-ms_delay(10000);
-ms_delay(10000);
-UART_PRINT("sending sync cmd again");
+
 //sync_spi();
 
     //
@@ -857,7 +901,10 @@ UART_PRINT("sending sync cmd again");
      //   UART_PRINT("opening server");
    // BsdUdpClient(5001);
 
- //   BsdUdpServer(5000);
+    UART_PRINT("starting server");
+
+  BsdUdpServer(5000);
+    UART_PRINT("returned from server func call");
 
     // power off the network processor
     //

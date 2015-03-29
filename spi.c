@@ -60,9 +60,9 @@ extern struct Command {
 	unsigned short descriptor;
 };
 
-unsigned short myStrA[50];
-unsigned short myStrB[50];
-unsigned short myStrC[100];
+unsigned short myStrA[100];
+unsigned short myStrB[100];
+unsigned short myStrC[200];
 
 unsigned short myStrX[50];
 unsigned short myStrY[50];
@@ -198,10 +198,9 @@ volatile unsigned long check_frame_start=0;
 				 {
 
 
-					 for (index=0;index<50;index++)
+					 for (index=0;index<100;index++)
 					 {
-						 myStrC[index]=myStrA[index];
-
+						 myStrC[index]=sl_Htons(myStrA[index]) ;
 					 }
 
 					 if( (myStrC[0]==0xA5A5) && (myStrC[1]==0xA5A5) )
@@ -238,12 +237,13 @@ volatile unsigned long check_frame_start=0;
 				 {
 
 
-					 for (index=50;index<100;index++)
-					 { myStrC[index]=myStrB[index];
+					 for (index=100;index<200;index++)
+					 {
+						myStrC[index]=sl_Htons(myStrB[index]);
 
 					 }
 
-					 if( (myStrC[50]==0xA5A5) && (myStrC[51]==0xA5A5) )
+					 if( (myStrC[100]==0xA5A5) && (myStrC[101]==0xA5A5) )
 					 {
 						 framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
 						 MAP_TimerDisable(TIMERA0_BASE, TIMER_A);

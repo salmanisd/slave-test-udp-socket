@@ -32,7 +32,8 @@
 #define APPLICATION_NAME        "UDP Socket"
 #define APPLICATION_VERSION     "1.1.0"
 
-#define IP_ADDR            0xc0a8006E /* 192.168.0.110 */
+#define IP_ADDR      0xC0A8AD01//   0xC0A8AD01//192.168.173.1			  // 0xc0a8006E /* 192.168.0.110 */
+
 #define PORT_NUM           5001
 #define BUF_SIZE           1400
 #define UDP_PACKET_COUNT   1000
@@ -68,6 +69,7 @@ extern struct Command {
 //****************************************************************************
 int BsdUdpClient(unsigned short usPort);
 int BsdUdpServer(unsigned short usPort);
+int UdpServer(unsigned short usPort,unsigned short destPort);
 static long WlanConnect();
 //static void DisplayBanner();
 static void BoardInit();
@@ -90,20 +92,23 @@ unsigned char  g_ucSimplelinkstarted = 0;
 unsigned long  g_ulIpAddr = 0;
 unsigned short hh;
 
-unsigned long udp_loop;
-extern int Reset_SYNC;
-char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;unsigned char spstr[];
+unsigned long recvfromflag;
+unsigned long udploop;
 
-extern unsigned short myStrA[50];				//Holds string from master over SPI
-extern unsigned short myStrB[50];				//Holds string from master over SPI
-extern unsigned short myStrC[50];
+
+extern int Reset_SYNC;
+char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;
+
+extern unsigned short myStrA[100];				//Holds string from master over SPI
+extern unsigned short myStrB[100];				//Holds string from master over SPI
+extern unsigned short myStrC[200];
 
 extern unsigned short tx_dummy_strA[50];
 extern unsigned short tx_dummy_strB[50];
 
 unsigned int spi_ret;
 
-unsigned long rx_udp_server[50];
+unsigned short rx_udp_server[2];
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
 #endif
@@ -440,11 +445,11 @@ static long ConfigureSimpleLinkToDefaultState()
         }
     }
 
-    // Enable DHCP client
- //   lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
-  //  ASSERT_ON_ERROR(lRetVal);
+//     Enable DHCP client
+    lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
+    ASSERT_ON_ERROR(lRetVal);
 
-    SlNetCfgIpV4Args_t ipV4;
+/*    SlNetCfgIpV4Args_t ipV4;
     ipV4.ipV4 = (unsigned long)SL_IPV4_VAL(192,168,173,54); // unsigned long IP  address
     ipV4.ipV4Mask = (unsigned long)SL_IPV4_VAL(255,255,255,0); // unsigned long Subnet mask for this AP/P2P
     ipV4.ipV4Gateway = (unsigned long)SL_IPV4_VAL(192,168,173,0); // unsigned long Default gateway address
@@ -452,7 +457,7 @@ static long ConfigureSimpleLinkToDefaultState()
     lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (unsigned char *) &ipV4);
     sl_Stop(0);
     sl_Start(NULL,NULL,NULL);
-    ASSERT_ON_ERROR(lRetVal);
+    ASSERT_ON_ERROR(lRetVal);*/
 
     // Disable scan
     ucConfigOpt = SL_SCAN_POLICY(0);
@@ -509,15 +514,26 @@ int BsdUdpServer(unsigned short usPort)
     int             iCounter;
     int             iAddrSize;
     int             iSockID;
+    int				iSockSend;
+    int             iNewSockID;
     int             iStatus;
     long            lLoopCount = 0;
-    short           sTestBufLen;
+    long			nonBlockingValue=1;
+    int		           SendBufLen;
     int 			index=0;
-int match=0;
+    int 			match=0;
 
+    SendBufLen  = 250;
+ //   RecvBufLen  =250;
 
-    sTestBufLen  = BUF_SIZE;
+  /*     SlFdSet_t ReadFds;
+       SlFdSet_t ActiveReadFds;
+       SlTimeval_t         timeout;
 
+       timeout.tv_sec = 5;
+       timeout.tv_usec = 0;
+
+       SL_FD_ZERO(&ReadFds);
 
 
     //filling the UDP server socket address
@@ -535,6 +551,8 @@ int match=0;
         ASSERT_ON_ERROR(UCP_SERVER_FAILED);
     }
 
+    SL_FD_SET(iSockID, &ReadFds);
+
     // binding the UDP socket to the UDP server address
     iStatus = sl_Bind(iSockID, (SlSockAddr_t *)&sLocalAddr, iAddrSize);
     if( iStatus < 0 )
@@ -544,54 +562,60 @@ int match=0;
         ASSERT_ON_ERROR(UCP_SERVER_FAILED);
     }
 
+  //  iStatus = sl_SetSockOpt(iSockID, SL_SOL_SOCKET, SL_SO_NONBLOCKING,
+  // / &nonBlockingValue, sizeof(nonBlockingValue)) ;
+
     // no listen or accept is required as UDP is connectionless protocol
-    /// waits for packets from a UDP client
-    unsigned long *iter=rx_udp_server;
-
-    struct Command CMD_01;
-            	    struct Command CMD_02;
-
-            	    CMD_01.opcode=0x0001; //1 to start transmission
-            	    CMD_01.len=0x0040; //length 64 bits
-            	    CMD_01.descriptor=0x6789; //fixed to 6789 for now
-
-            	    CMD_02.opcode=0x0002; //2 to stop transmission
-            	    CMD_02.len=0x0040; //length 64 bits
-            	    CMD_02.descriptor=0x6789; //fixed to 6789 for now
+    /// waits for packets from a UDP client*/
 
 
+       //filling the UDP server socket address
+       sAddr.sin_family = SL_AF_INET;
+       sAddr.sin_port = sl_Htons((unsigned short)usPort);
+       sAddr.sin_addr.s_addr = 0;
 
-    do
-    {
+       iAddrSize = sizeof(SlSockAddrIn_t);
 
-        iStatus = sl_RecvFrom(iSockID, iter, 2, 0,
-                     ( SlSockAddr_t *)&sAddr, (SlSocklen_t*)&iAddrSize );
-        if( iStatus < 0 )
-    {
-        // error
-        sl_Close(iSockID);
-        ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-    }
+       // creating a UDP socket
+       iSockID = sl_Socket(SL_AF_INET,SL_SOCK_DGRAM, 0);
+       if( iSockID < 0 )
+       {
+           // error
+           ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
+       }
 
+       // binding the UDP socket to the UDP server address
+          iStatus = sl_Bind(iSockID, (SlSockAddr_t *)&sLocalAddr, iAddrSize);
+          if( iStatus < 0 )
+          {
+              // error
+              sl_Close(iSockID);
+              ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+          }
 
-        if (iStatus>0)
-         {
-        	    if (*iter==0x00000041)
-        	    {	 Reset_SYNC=reset_sync_spi();
-
-        	 send_cmd(&CMD_01);}
-
-        	 if (*iter==0x00000042)
-        	 {	 Reset_SYNC=reset_sync_spi();
-
-            	 send_cmd(&CMD_02);
-        	 }
-         }
+       UART_PRINT("created socket \n\r");
 
 
 
-        udp_loop++;
-    }while (*iter++!=0x00004141);
+   while (1)
+   {
+     //  UART_PRINT("in loop \n\r");
+   //for(index=0;index<5;index++)
+
+   //	sprintf (spstr[index],"%u",myStrC[index]);
+   	// sending packet
+   //	spstr[0]=sl_Htons(myStrC[2]);
+           iStatus = sl_SendTo(iSockID, myStrC , SendBufLen, 0,
+                                   (SlSockAddr_t *)&sAddr, iAddrSize);
+           if( iStatus <= 0 )
+           {
+               // error
+               sl_Close(iSockID);
+               ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
+           }
+
+
+   }//(*iter++!=0x00004141);
 
     UART_PRINT("Recieved packets successfully\n\r");
     //rx_udp_server[10]=sl_Ntohl((unsigned long) rx_udp_server[0]);
@@ -628,13 +652,15 @@ int BsdUdpClient(unsigned short usPort)
     int             iSockID;
     int             iStatus;
     long            lLoopCount = 0;
+    short			spstr[100];
 
-char stringbuf[]="Testing Communication";
+char udp_str[10];
+udp_str[0]='X';
 
 
 UART_PRINT("entered bsdudpclient \n\r");
    // sTestBufLen  = BUF_SIZE;
-       sTestBufLen  = 10;
+       sTestBufLen  = 250;
     //filling the UDP server socket address
     sAddr.sin_family = SL_AF_INET;
     sAddr.sin_port = sl_Htons((unsigned short)usPort);
@@ -654,26 +680,26 @@ UART_PRINT("entered bsdudpclient \n\r");
     UART_PRINT("created socket \n\r");
 
 
+
 while (1)
 {
-    UART_PRINT("in loop \n\r");
-    for(index=0;index<50;index++)
-    {
-	//sprintf(spstr,"%d",myStrC[index]);
+  //  UART_PRINT("in loop \n\r");
+//for(index=0;index<5;index++)
+
+//	sprintf (spstr[index],"%u",myStrC[index]);
 	// sending packet
- //       iStatus = sl_SendTo(iSockID, spstr , sTestBufLen, 0,
-    //                            (SlSockAddr_t *)&sAddr, iAddrSize);
+//	spstr[0]=sl_Htons(myStrC[2]);
+        iStatus = sl_SendTo(iSockID, myStrC , sTestBufLen, 0,
+                                (SlSockAddr_t *)&sAddr, iAddrSize);
         if( iStatus <= 0 )
         {
             // error
             sl_Close(iSockID);
             ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
         }
-        index=0;
-        lLoopCount++;
-    }
-    }
 
+
+}
     UART_PRINT("Sent %u packets successfully\n\r",g_ulPacketCount);
 
     //closing the socket after sending 1000 packets
@@ -682,7 +708,152 @@ while (1)
 
     return SUCCESS;
 }
+//****************************************************************************
+//
+//
+//****************************************************************************
+int UdpServer(unsigned short serverPort,unsigned short destPort)
+{
+	SlSockAddrIn_t  xAddr;
+		SlSockAddrIn_t  sAddr;
+	    SlSockAddrIn_t  sLocalAddr;
+	    int             iCounter;
+	    int             iAddrSize;
+	    int             Send_SockID,Recv_SockID;
 
+	    int             iStatus,iStatus2;
+	    long            lLoopCount = 0;
+	    short           sTestBufLen;
+	    int 			nonBlockingValue=1;
+	    int   		    packet_count=0;
+	    //filling the UDP server socket address
+	    char udpstr[2];
+ udpstr[0]='A';
+ udpstr[1]='B';
+
+	sLocalAddr.sin_family = SL_AF_INET;
+	sLocalAddr.sin_port = sl_Htons((unsigned short) serverPort);
+	sLocalAddr.sin_addr.s_addr = 0;
+
+	 sAddr.sin_family = SL_AF_INET;
+	 sAddr.sin_port = sl_Htons((unsigned short)destPort);
+	 sAddr.sin_addr.s_addr =sl_Htonl(SL_IPV4_VAL(192,168,173,1));// sl_Htonl((unsigned int)g_ulDestinationIp);
+
+	 xAddr.sin_family = SL_AF_INET;
+	 xAddr.sin_port = sl_Htons((unsigned short)5000);
+	 xAddr.sin_addr.s_addr =sl_Htonl(SL_IPV4_VAL(0,0,0,0));
+
+	iAddrSize = sizeof(SlSockAddrIn_t);
+
+	// creating a UDP socket
+	Send_SockID = sl_Socket(SL_AF_INET, SL_SOCK_DGRAM, 0);
+	if (Send_SockID < 0)
+	{
+	// error
+		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+	}
+
+	// creating a UDP socket
+		Recv_SockID = sl_Socket(SL_AF_INET, SL_SOCK_DGRAM, 0);
+		if (Recv_SockID < 0)
+		{
+		// error
+			ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+		}
+
+	// binding the UDP socket to the UDP server address
+iStatus = sl_Bind(Recv_SockID, (SlSockAddr_t *) &sLocalAddr, iAddrSize);
+	if (iStatus < 0)
+	{
+		// error
+		sl_Close(Recv_SockID);
+	ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+	}
+
+	//NonBlocking Socket
+iStatus = sl_SetSockOpt(Recv_SockID, SL_SOL_SOCKET, SL_SO_NONBLOCKING,&nonBlockingValue, sizeof(nonBlockingValue)) ;
+ 	 if (iStatus < 0)
+	{
+		// error
+		sl_Close(Recv_SockID);
+	ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+	}
+
+
+	unsigned short *iter=rx_udp_server;
+	udploop=0;
+	   struct Command CMD_01;
+
+	    CMD_01.opcode=0x0001; //1 to start transmission
+	    CMD_01.len=0x0040; //length 64 bits
+	    CMD_01.descriptor=0x6789; //fixed to 6789 for now
+
+	    struct Command CMD_02;
+
+	    CMD_02.opcode=0x0002; //2 to stop transmission
+	    CMD_02.len=0x0040; //length 64 bits
+	    CMD_02.descriptor=0x6789; //fixed to 6789 for now
+
+
+	 while (1)
+	    {
+packet_count=0;
+		 /*     iStatus = sl_RecvFrom(Recv_SockID, iter, 4, 0,
+			                            ( SlSockAddr_t *)&sAddr, (SlSocklen_t*)&iAddrSize );
+
+		          if( iStatus < 0 )
+			           {
+			               // error
+			               sl_Close(Recv_SockID);
+			              ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+			           }*/
+	//	 UART_PRINT("sending");
+		 // sending packet
+		 while(packet_count<1250)
+		 { iStatus2= sl_SendTo(Send_SockID, myStrC, 500, 0,
+	                                (SlSockAddr_t *)&sAddr, iAddrSize);
+packet_count++;
+
+if	(iStatus2>0)
+	udploop++;
+
+		 }
+
+		 iStatus = sl_RecvFrom(Recv_SockID, iter, 4, 0,
+				 			                            ( SlSockAddr_t *)&xAddr, (SlSocklen_t*)&iAddrSize );
+
+				 		          if( iStatus < 0 )
+				 			           {
+				 		        	 packet_count=0;
+				 			           }
+				 		          else if( iStatus > 0 )
+				 		          {
+				 		        	recvfromflag++;
+
+				 		        	 switch (*iter)
+				 		        	 {
+				 		        	 case  0x0100:
+				 		        		Reset_SYNC=reset_sync_spi();
+				 		        		        	 send_cmd(&CMD_01);
+				 		        	 // start transmission;
+				 		        	    break;
+
+				 		        	    case 0x0200:
+				 		        	    	Reset_SYNC=reset_sync_spi();
+				 		        	    	        	 send_cmd(&CMD_02);
+				 		        	    break;
+
+				 		        	    default:
+				 		        	      break;
+
+				 		        	 }
+				 		          }
+
+	    }
+
+
+
+}
 
 //****************************************************************************
 //
@@ -896,14 +1067,23 @@ void main()
 */
 
 
-    //
+    struct Command CMD_01;
+
+    CMD_01.opcode=0x0001; //1 to start transmission
+    CMD_01.len=0x0040; //length 64 bits
+    CMD_01.descriptor=0x6789; //fixed to 6789 for now
+
+Reset_SYNC=reset_sync_spi();
+
+        	 send_cmd(&CMD_01);
+
 
      //   UART_PRINT("opening server");
-   // BsdUdpClient(5001);
+// BsdUdpClient(5001);
 
-    UART_PRINT("starting server");
-
-  BsdUdpServer(5000);
+ //   UART_PRINT("starting server");
+           	UdpServer(5000,5001);
+ //BsdUdpServer(5000);
     UART_PRINT("returned from server func call");
 
     // power off the network processor

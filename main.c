@@ -492,222 +492,7 @@ static long ConfigureSimpleLinkToDefaultState()
 
     return lRetVal; // Success
 }
-//****************************************************************************
-//
-//! \brief Opening a UDP server side socket and receiving data
-//!
-//! This function opens a UDP socket in Listen mode and waits for an incoming
-//! UDP connection.
-//!    If a socket connection is established then the function will try to
-//!    read 1000 UDP packets from the connected client.
-//!
-//! \param[in]          port number on which the server will be listening on
-//!
-//! \return             0 on success, Negative value on Error.
-//
-//****************************************************************************
-int BsdUdpServer(unsigned short usPort)
-{
 
-    SlSockAddrIn_t  sAddr;
-    SlSockAddrIn_t  sLocalAddr;
-    int             iCounter;
-    int             iAddrSize;
-    int             iSockID;
-    int				iSockSend;
-    int             iNewSockID;
-    int             iStatus;
-    long            lLoopCount = 0;
-    long			nonBlockingValue=1;
-    int		           SendBufLen;
-    int 			index=0;
-    int 			match=0;
-
-    SendBufLen  = 250;
- //   RecvBufLen  =250;
-
-  /*     SlFdSet_t ReadFds;
-       SlFdSet_t ActiveReadFds;
-       SlTimeval_t         timeout;
-
-       timeout.tv_sec = 5;
-       timeout.tv_usec = 0;
-
-       SL_FD_ZERO(&ReadFds);
-
-
-    //filling the UDP server socket address
-    sLocalAddr.sin_family = SL_AF_INET;
-    sLocalAddr.sin_port = sl_Htons((unsigned short)usPort);
-    sLocalAddr.sin_addr.s_addr = 0;
-
-    iAddrSize = sizeof(SlSockAddrIn_t);
-
-    // creating a UDP socket
-    iSockID = sl_Socket(SL_AF_INET,SL_SOCK_DGRAM, 0);
-    if( iSockID < 0 )
-    {
-        // error
-        ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-    }
-
-    SL_FD_SET(iSockID, &ReadFds);
-
-    // binding the UDP socket to the UDP server address
-    iStatus = sl_Bind(iSockID, (SlSockAddr_t *)&sLocalAddr, iAddrSize);
-    if( iStatus < 0 )
-    {
-        // error
-        sl_Close(iSockID);
-        ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-    }
-
-  //  iStatus = sl_SetSockOpt(iSockID, SL_SOL_SOCKET, SL_SO_NONBLOCKING,
-  // / &nonBlockingValue, sizeof(nonBlockingValue)) ;
-
-    // no listen or accept is required as UDP is connectionless protocol
-    /// waits for packets from a UDP client*/
-
-
-       //filling the UDP server socket address
-       sAddr.sin_family = SL_AF_INET;
-       sAddr.sin_port = sl_Htons((unsigned short)usPort);
-       sAddr.sin_addr.s_addr = 0;
-
-       iAddrSize = sizeof(SlSockAddrIn_t);
-
-       // creating a UDP socket
-       iSockID = sl_Socket(SL_AF_INET,SL_SOCK_DGRAM, 0);
-       if( iSockID < 0 )
-       {
-           // error
-           ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
-       }
-
-       // binding the UDP socket to the UDP server address
-          iStatus = sl_Bind(iSockID, (SlSockAddr_t *)&sLocalAddr, iAddrSize);
-          if( iStatus < 0 )
-          {
-              // error
-              sl_Close(iSockID);
-              ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-          }
-
-       UART_PRINT("created socket \n\r");
-
-
-
-   while (1)
-   {
-     //  UART_PRINT("in loop \n\r");
-   //for(index=0;index<5;index++)
-
-   //	sprintf (spstr[index],"%u",myStrC[index]);
-   	// sending packet
-   //	spstr[0]=sl_Htons(myStrC[2]);
-           iStatus = sl_SendTo(iSockID, myStrC , SendBufLen, 0,
-                                   (SlSockAddr_t *)&sAddr, iAddrSize);
-           if( iStatus <= 0 )
-           {
-               // error
-               sl_Close(iSockID);
-               ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
-           }
-
-
-   }//(*iter++!=0x00004141);
-
-    UART_PRINT("Recieved packets successfully\n\r");
-    //rx_udp_server[10]=sl_Ntohl((unsigned long) rx_udp_server[0]);
-	if (sl_Ntohl((unsigned long) rx_udp_server[0])=='ABCD')
-    UART_PRINT("Matched \n\r");
-	else
-		UART_PRINT("Not Matched");
-    //closing the socket
-    sl_Close(iSockID);
-
-    return SUCCESS;
-}
-
-//****************************************************************************
-//
-//! \brief Opening a UDP client side socket and sending data
-//!
-//! This function opens a UDP socket and tries to connect to a Server IP_ADDR
-//!    waiting on port PORT_NUM.
-//!    Then the function will send 1000 UDP packets to the server.
-//!
-//! \param[in]  port number on which the server will be listening on
-//!
-//! \return    0 on success, -1 on Error.
-//
-//****************************************************************************
-int BsdUdpClient(unsigned short usPort)
-{
-	unsigned int index=0;
-    int             iCounter;
-    short           sTestBufLen;
-    SlSockAddrIn_t  sAddr;
-    int             iAddrSize;
-    int             iSockID;
-    int             iStatus;
-    long            lLoopCount = 0;
-    short			spstr[100];
-
-char udp_str[10];
-udp_str[0]='X';
-
-
-UART_PRINT("entered bsdudpclient \n\r");
-   // sTestBufLen  = BUF_SIZE;
-       sTestBufLen  = 250;
-    //filling the UDP server socket address
-    sAddr.sin_family = SL_AF_INET;
-    sAddr.sin_port = sl_Htons((unsigned short)usPort);
-    sAddr.sin_addr.s_addr = sl_Htonl((unsigned int)g_ulDestinationIp);
-
-    iAddrSize = sizeof(SlSockAddrIn_t);
-
-    // creating a UDP socket
-    iSockID = sl_Socket(SL_AF_INET,SL_SOCK_DGRAM, 0);
-    if( iSockID < 0 )
-    {
-        // error
-        ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
-    }
-
-
-    UART_PRINT("created socket \n\r");
-
-
-
-while (1)
-{
-  //  UART_PRINT("in loop \n\r");
-//for(index=0;index<5;index++)
-
-//	sprintf (spstr[index],"%u",myStrC[index]);
-	// sending packet
-//	spstr[0]=sl_Htons(myStrC[2]);
-        iStatus = sl_SendTo(iSockID, myStrC , sTestBufLen, 0,
-                                (SlSockAddr_t *)&sAddr, iAddrSize);
-        if( iStatus <= 0 )
-        {
-            // error
-            sl_Close(iSockID);
-            ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
-        }
-
-
-}
-    UART_PRINT("Sent %u packets successfully\n\r",g_ulPacketCount);
-
-    //closing the socket after sending 1000 packets
-    sl_Close(iSockID);
-
-
-    return SUCCESS;
-}
 //****************************************************************************
 //
 //
@@ -798,17 +583,7 @@ iStatus = sl_SetSockOpt(Recv_SockID, SL_SOL_SOCKET, SL_SO_NONBLOCKING,&nonBlocki
 	 while (1)
 	    {
 packet_count=0;
-		 /*     iStatus = sl_RecvFrom(Recv_SockID, iter, 4, 0,
-			                            ( SlSockAddr_t *)&sAddr, (SlSocklen_t*)&iAddrSize );
 
-		          if( iStatus < 0 )
-			           {
-			               // error
-			               sl_Close(Recv_SockID);
-			              ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-			           }*/
-	//	 UART_PRINT("sending");
-		 // sending packet
 		 while(packet_count<1250)
 		 { iStatus2= sl_SendTo(Send_SockID, myStrC, 500, 0,
 	                                (SlSockAddr_t *)&sAddr, iAddrSize);
@@ -830,15 +605,15 @@ if	(iStatus2>0)
 				 		          {
 				 		        	recvfromflag++;
 
-				 		        	 switch (*iter)
+				 		        	 switch (sl_Ntohs(*iter))
 				 		        	 {
-				 		        	 case  0x0100:
+				 		        	 case  0x0001:
 				 		        		Reset_SYNC=reset_sync_spi();
 				 		        		        	 send_cmd(&CMD_01);
 				 		        	 // start transmission;
 				 		        	    break;
 
-				 		        	    case 0x0200:
+				 		        	    case 0x0002:
 				 		        	    	Reset_SYNC=reset_sync_spi();
 				 		        	    	        	 send_cmd(&CMD_02);
 				 		        	    break;
@@ -1066,6 +841,9 @@ void main()
     UART_PRINT("Exiting Application ...\n\r");
 */
 
+ //Disable and clear All SPI interrupts
+ MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY|SPI_INT_DMATX|SPI_INT_DMARX);
+ MAP_SPIIntClear(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY|SPI_INT_DMATX|SPI_INT_DMARX);
 
     struct Command CMD_01;
 
@@ -1073,18 +851,19 @@ void main()
     CMD_01.len=0x0040; //length 64 bits
     CMD_01.descriptor=0x6789; //fixed to 6789 for now
 
+    UART_PRINT("calling  sync");
+
+
+
 Reset_SYNC=reset_sync_spi();
 
-        	 send_cmd(&CMD_01);
+UART_PRINT("returned from sync");
+send_cmd(&CMD_01);
 
 
-     //   UART_PRINT("opening server");
-// BsdUdpClient(5001);
 
- //   UART_PRINT("starting server");
            	UdpServer(5000,5001);
- //BsdUdpServer(5000);
-    UART_PRINT("returned from server func call");
+
 
     // power off the network processor
     //

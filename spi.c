@@ -134,7 +134,7 @@ volatile unsigned long check_frame_start=0;
 			 if(ulStatus & SPI_INT_RX_FULL)
 			 {
 
-				 // 	while(!(HWREG(GSPI_BASE + MCSPI_O_CH0STAT) & MCSPI_CH0STAT_RXS));
+				//  	while(!(HWREG(GSPI_BASE + MCSPI_O_CH0STAT) & MCSPI_CH0STAT_RXS));
 
 				 ulRecvData = HWREG(GSPI_BASE + MCSPI_O_RX0);
 
@@ -188,7 +188,6 @@ volatile unsigned long check_frame_start=0;
 
 			 if (ulStatus & SPI_INT_DMARX)
 			 {
-				 chk_bufa_flag=1;
 				 MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX);
 
 				 ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT);
@@ -289,18 +288,9 @@ void SlaveMain()
   //  ms_delay(1000);//1 msec
 
 
-
 			int j=0;
 
-for(j=0;j<50;j++)
-{
-	myStrX[j]=0;
-}
 
-for(j=0;j<50;j++)
-{
-	myStrY[j]=0;
-}
 
 MAP_SPIDisable(GSPI_BASE);
 	//
@@ -446,8 +436,10 @@ int reset_sync_spi()
 
 	signed int j=-1;
 	// Enable the SPI module clock
+
 		  //
-		  MAP_PRCMPeripheralClkEnable(PRCM_GSPI,PRCM_RUN_MODE_CLK);
+
+	MAP_PRCMPeripheralClkEnable(PRCM_GSPI,PRCM_RUN_MODE_CLK);
 
 
 
@@ -474,10 +466,10 @@ int reset_sync_spi()
 
 	  MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
 
+
 	      //
 	      // Enable Interrupts
-	      //
-	//      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
+
 
 	      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_TX_EMPTY|SPI_INT_RX_FULL);
 
@@ -486,12 +478,7 @@ int reset_sync_spi()
 	      // Enable SPI for communication
 	      //
 	      MAP_SPIEnable(GSPI_BASE);
-/*
-while(j==-1)
-{
-	j=h;
-}
-*/
+
 	    //  while(1);
 	    while(get_sync_cmd_resp==FALSE);
 
@@ -506,7 +493,8 @@ return 1;
 //
 //*****************************************************************************
 void frame_sync()
-{
+{	 chk_bufa_flag++;
+
 	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
 							 	MAP_TimerEnable(TIMERA0_BASE, TIMER_A);
 

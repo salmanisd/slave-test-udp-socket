@@ -81,6 +81,7 @@ unsigned char bufA[4];
 int Reset_SYNC;
 volatile unsigned int get_sync_cmd_resp=FALSE;
 volatile unsigned int cmd_sent=FALSE;
+unsigned int flow_ctrl=0;
 
 		    unsigned long ulMode;
 
@@ -197,16 +198,16 @@ volatile unsigned long check_frame_start=0;
 				 {
 
 
-					 for (index=0;index<100;index++)
+					 for (index=0;index<350;index++)
 					 {
 						 myStrC[index]=sl_Htons(myStrA[index]) ;
 					 }
 
 					 if( (myStrC[0]==0xA5A5) && (myStrC[1]==0xA5A5) )
 					 {
-						 framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
-						 						 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
-						 check_frame_start++;
+						// framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
+						 					//	 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
+					//	 check_frame_start++;
 
 					 }
 					 else
@@ -241,12 +242,14 @@ volatile unsigned long check_frame_start=0;
 						myStrC[index]=sl_Htons(myStrB[index]);
 
 					 }
+					 flow_ctrl=1;
 
+					 check_frame_start++;
 					 if( (myStrC[100]==0xA5A5) && (myStrC[101]==0xA5A5) )
 					 {
-						 framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
-						 MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
-						 check_frame_start++;
+						// framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
+					//	 MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
+					//	 check_frame_start++;
 
 					 }
 					 else
@@ -497,6 +500,9 @@ void frame_sync()
 
 	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
 							 	MAP_TimerEnable(TIMERA0_BASE, TIMER_A);
+			 					//	 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
+							 	//TimerEnable(TIMERA0_BASE, TIMER_A);
+							 	MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
 
 MAP_SPIDisable(GSPI_BASE);
 	//

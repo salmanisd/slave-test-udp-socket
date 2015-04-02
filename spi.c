@@ -1,3 +1,4 @@
+
 #include <string.h>
 #include "hw_types.h"
 #include "hw_memmap.h"
@@ -59,9 +60,9 @@ extern struct Command {
 	unsigned short descriptor;
 };
 
-unsigned short myStrA[350];
-unsigned short myStrB[350];
-unsigned short myStrC[701];
+unsigned short myStrA[101];
+unsigned short myStrB[101];
+unsigned short myStrC[202];
 
 unsigned short myStrX[50];
 unsigned short myStrY[50];
@@ -80,22 +81,14 @@ unsigned char bufA[4];
 int Reset_SYNC;
 volatile unsigned int get_sync_cmd_resp=FALSE;
 volatile unsigned int cmd_sent=FALSE;
+unsigned int flow_ctrl=0;
 
 		    unsigned long ulMode;
 
 unsigned short cmd_buffer[5];
 volatile unsigned int cmd_index=0;
 
- unsigned int recv_pong_packet=0;
- unsigned int recv_ping_packet=0;
- unsigned int  check_frame_start=0;
- unsigned int flow_ctrl=0;
-
- extern unsigned int pingbuf_done=0;
- extern unsigned int pongbuf_done=0;
-
- extern unsigned int wtip=0;
-
+volatile unsigned long check_frame_start=0;
 		 unsigned long pingpong_setup_t;
 		 unsigned long framesync_t;
 
@@ -204,17 +197,17 @@ volatile unsigned int cmd_index=0;
 				 if(ulMode == UDMA_MODE_STOP)
 				 {
 
-			//	while	( wtip==1);
-					 for (index=0;index<350;index++)
+
+					 for (index=0;index<101;index++)
 					 {
-						 myStrC[index]=sl_Htons(myStrA[index]) ;
+						 myStrC[index]=(myStrA[index]);//sl_Htons(myStrA[index]) ;
 					 }
 
 					 if( (myStrC[0]==0xA5A5) && (myStrC[1]==0xA5A5) )
 					 {
-					//	 pingbuf_done=1;
-						 recv_ping_packet=1;
-				//	 check_frame_start++;
+						// framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
+						 					//	 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
+					//	 check_frame_start++;
 
 					 }
 					 else
@@ -243,17 +236,18 @@ volatile unsigned int cmd_index=0;
 				 if(ulMode == UDMA_MODE_STOP)
 				 {
 
-					 for (index=350;index<700;index++)
+
+					 for (index=101;index<202;index++)
 					 {
-						myStrC[index]=sl_Htons(myStrB[index]);
+						myStrC[index]=(myStrB[index]);//sl_Htons(myStrB[index]);
 
 					 }
+				//	 flow_ctrl=1;
 
-					 if( (myStrC[350]==0xA5A5) && (myStrC[351]==0xA5A5) )
+
+					 if( (myStrC[101]==0xB9B9) && (myStrC[102]==0xB9B9) )
 					 {
-				//		 pongbuf_done=1;
-						 recv_pong_packet=1;
-						 flow_ctrl=1;
+
 						 check_frame_start++;
 
 					 }
@@ -504,6 +498,9 @@ void frame_sync()
 
 	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
 							 	MAP_TimerEnable(TIMERA0_BASE, TIMER_A);
+			 					//	 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
+							 	//TimerEnable(TIMERA0_BASE, TIMER_A);
+							 	MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
 
 MAP_SPIDisable(GSPI_BASE);
 	//

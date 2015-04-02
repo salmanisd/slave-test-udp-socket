@@ -60,12 +60,20 @@ extern struct Command {
 	unsigned short descriptor;
 };
 
-unsigned short myStrA[101];
-unsigned short myStrB[101];
-unsigned short myStrC[202];
+ unsigned short myStrA[351];
+ unsigned short myStrB[351];
+ unsigned short myStrC[702];
+
+unsigned short myStrD[202];
 
 unsigned short myStrX[50];
 unsigned short myStrY[50];
+
+
+unsigned int bufC_busy=0;
+unsigned int bufD_busy=0;
+
+//unsigned short ping_buf_1[100];
 
 unsigned long ulStatReg;
 unsigned int index = 0;
@@ -82,6 +90,9 @@ int Reset_SYNC;
 volatile unsigned int get_sync_cmd_resp=FALSE;
 volatile unsigned int cmd_sent=FALSE;
 unsigned int flow_ctrl=0;
+unsigned int recv_ping_packet=0;
+ unsigned int recv_pong_packet=0;
+
 
 		    unsigned long ulMode;
 
@@ -197,11 +208,18 @@ volatile unsigned long check_frame_start=0;
 				 if(ulMode == UDMA_MODE_STOP)
 				 {
 
+if  (check_frame_start>0)
+		{
+		recv_ping_packet=1;
+		}
 
-					 for (index=0;index<101;index++)
+
+					/*for (index=0;index<101;index++)
 					 {
 						 myStrC[index]=(myStrA[index]);//sl_Htons(myStrA[index]) ;
-					 }
+					 }*/
+
+memcpy(myStrC,myStrA,702) ;
 
 					 if( (myStrC[0]==0xA5A5) && (myStrC[1]==0xA5A5) )
 					 {
@@ -213,6 +231,7 @@ volatile unsigned long check_frame_start=0;
 					 else
 					 {
 
+						 check_frame_start=0;
 
 						 frame_sync();//Reset_SYNC=reset_sync_spi();	// //check_frame_start=0;
 					 }
@@ -237,15 +256,14 @@ volatile unsigned long check_frame_start=0;
 				 {
 
 
-					 for (index=101;index<202;index++)
+					 for (index=351;index<702;index++)
 					 {
 						myStrC[index]=(myStrB[index]);//sl_Htons(myStrB[index]);
 
 					 }
-				//	 flow_ctrl=1;
+					 recv_pong_packet=1;
 
-
-					 if( (myStrC[101]==0xB9B9) && (myStrC[102]==0xB9B9) )
+					 if( (myStrC[351]==0xB9B9) && (myStrC[352]==0xB9B9) )
 					 {
 
 						 check_frame_start++;
@@ -254,7 +272,7 @@ volatile unsigned long check_frame_start=0;
 					 else
 					 {
 
-
+						 check_frame_start=0;
 						 frame_sync();//Reset_SYNC=reset_sync_spi();	// //check_frame_start=0;
 					 }
 

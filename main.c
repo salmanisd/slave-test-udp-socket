@@ -99,12 +99,13 @@ unsigned long udploop;
 extern int Reset_SYNC;
 char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;
 
-extern unsigned short myStrA[101];				//Holds string from master over SPI
-extern unsigned short myStrB[101];				//Holds string from master over SPI
-extern unsigned short myStrC[202];
+extern unsigned short myStrA[351];				//Holds string from master over SPI
+extern unsigned short myStrB[351];				//Holds string from master over SPI
+extern unsigned short myStrC[702];
 
-extern unsigned short tx_dummy_strA[50];
-extern unsigned short tx_dummy_strB[50];
+extern unsigned int recv_ping_packet;
+extern unsigned int recv_pong_packet;
+
 
 unsigned int spi_ret;
 extern unsigned int flow_ctrl;
@@ -448,10 +449,10 @@ static long ConfigureSimpleLinkToDefaultState()
 	}
 
 	//     Enable DHCP client
-	/*   lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
-    ASSERT_ON_ERROR(lRetVal);*/
+	   lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
+    ASSERT_ON_ERROR(lRetVal);
 
-	SlNetCfgIpV4Args_t ipV4;
+	/*SlNetCfgIpV4Args_t ipV4;
 	ipV4.ipV4 = (unsigned long)SL_IPV4_VAL(192,168,173,54); // unsigned long IP  address
 	ipV4.ipV4Mask = (unsigned long)SL_IPV4_VAL(255,255,255,0); // unsigned long Subnet mask for this AP/P2P
 	ipV4.ipV4Gateway = (unsigned long)SL_IPV4_VAL(192,168,173,0); // unsigned long Default gateway address
@@ -459,7 +460,7 @@ static long ConfigureSimpleLinkToDefaultState()
 	lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (unsigned char *) &ipV4);
 	sl_Stop(0);
 	sl_Start(NULL,NULL,NULL);
-	ASSERT_ON_ERROR(lRetVal);
+	ASSERT_ON_ERROR(lRetVal);*/
 
 	// Disable scan
 	ucConfigOpt = SL_SCAN_POLICY(0);
@@ -587,41 +588,40 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 
 	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
 	MAP_TimerEnable(TIMERA0_BASE, TIMER_A);
+
+
+	UART_PRINT("calling  sync");
+
+
+
+		Reset_SYNC=reset_sync_spi();
+
+		UART_PRINT("returned from sync");
+		send_cmd(&CMD_01);
+
 	while (1)
 	{
 
-			//	 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
-			//TimerEnable(TIMERA0_BASE, TIMER_A);
+		if (1)
+				{
+					do{
+					//	if(SL_EAGAIN == iStatus2)
+				//			tempCnt++;
 
-	//		TimerLoadSet(TIMERA0_BASE, TIMER_A, 0);
-
-		if (flow_ctrl)
-		{
-			do{
-			//	if(SL_EAGAIN == iStatus2)
-		//			tempCnt++;
-
-				iStatus2= sl_SendTo(Send_SockID, myStrC, 400, 0,
-							(SlSockAddr_t *)&sAddr, iAddrSize);
-			}while( (iStatus2 == SL_EAGAIN) );
-		flow_ctrl=0;
-		if	(iStatus2>0)
-					udploop++;
-		}
-			//if(iStatus2<0)
-				//iStatus2 = 0;
-
-		//	timerValue = MAP_TimerValueGet(TIMERA0_BASE, TIMER_A); // read timer value
+						iStatus2= sl_SendTo(Send_SockID, myStrC, 1404, 0,
+									(SlSockAddr_t *)&sAddr, iAddrSize);
+					}while( (iStatus2 == SL_EAGAIN) );
+					recv_pong_packet=0;
+				if	(iStatus2>0)
+							udploop++;
+				}
 
 
 
 
 
 
-
-	}
-
-
+	}//while
 
 }
 
@@ -843,14 +843,7 @@ void main()
 	CMD_01.len=0x0040; //length 64 bits
 	CMD_01.descriptor=0x6789; //fixed to 6789 for now
 
-	UART_PRINT("calling  sync");
 
-
-
-	Reset_SYNC=reset_sync_spi();
-
-	UART_PRINT("returned from sync");
-	send_cmd(&CMD_01);
 
 
 

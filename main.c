@@ -103,12 +103,14 @@ extern unsigned short myStrA[351];				//Holds string from master over SPI
 extern unsigned short myStrB[351];				//Holds string from master over SPI
 extern unsigned short myStrC[702];
 
+extern unsigned short myStrD[351];
+
 extern unsigned int recv_ping_packet;
 extern unsigned int recv_pong_packet;
 
 
 unsigned int spi_ret;
-extern unsigned int flow_ctrl;
+extern unsigned int c_full;
 
 
 unsigned short rx_udp_server[2];
@@ -510,7 +512,7 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 	SlSockAddrIn_t  sLocalAddr;
 	int             iCounter;
 	int             iAddrSize;
-	int             Send_SockID,Recv_SockID;
+	int             Send_SockID,Send_SockID2,Recv_SockID;
 
 	int             iStatus,iStatus2;
 	long            lLoopCount = 0;
@@ -543,6 +545,14 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 		// error
 		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
 	}
+
+	// creating a UDP socket
+		Send_SockID2 = sl_Socket(SL_AF_INET, SL_SOCK_DGRAM, 0);
+		if (Send_SockID2 < 0)
+		{
+			// error
+			ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+		}
 
 	// creating a UDP socket
 	Recv_SockID = sl_Socket(SL_AF_INET, SL_SOCK_DGRAM, 0);
@@ -599,23 +609,46 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 		UART_PRINT("returned from sync");
 		send_cmd(&CMD_01);
 
+		unsigned int index=0;
+
 	while (1)
 	{
+		if 	(recv_ping_packet==1)
+		{
+			for (index=0;index<351;index++)
+			{
+				myStrC[index]=(myStrA[index]);
+			}
+			iStatus2= sl_SendTo(Send_SockID, myStrC, 702, 0,
+												(SlSockAddr_t *)&sAddr, iAddrSize);
 
-		if (1)
+			recv_ping_packet=0;
+		}
+
+		if 	(recv_pong_packet==1)
+		{
+			for (index=351;index<702;index++)
+			{
+				myStrC[index]=(myStrB[index]);
+			}
+
+			iStatus2= sl_SendTo(Send_SockID2, &myStrC[351], 702, 0,
+												(SlSockAddr_t *)&sAddr, iAddrSize);
+			recv_pong_packet=0;
+		}
+
+
+	/*	if ((recv_pong_packet==1)&&(recv_ping_packet==1))
 				{
-					do{
-					//	if(SL_EAGAIN == iStatus2)
-				//			tempCnt++;
 
 						iStatus2= sl_SendTo(Send_SockID, myStrC, 1404, 0,
 									(SlSockAddr_t *)&sAddr, iAddrSize);
-					}while( (iStatus2 == SL_EAGAIN) );
-					recv_pong_packet=0;
+
+						recv_pong_packet=0;
+						recv_ping_packet=0;
 				if	(iStatus2>0)
 							udploop++;
-				}
-
+				}*/
 
 
 

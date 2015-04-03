@@ -64,14 +64,13 @@ extern struct Command {
  unsigned short myStrB[351];
  unsigned short myStrC[702];
 
-unsigned short myStrD[202];
+unsigned short myStrD[351];
 
 unsigned short myStrX[50];
 unsigned short myStrY[50];
 
 
-unsigned int bufC_busy=0;
-unsigned int bufD_busy=0;
+unsigned int c_full=0;
 
 //unsigned short ping_buf_1[100];
 
@@ -208,24 +207,10 @@ volatile unsigned long check_frame_start=0;
 				 if(ulMode == UDMA_MODE_STOP)
 				 {
 
-if  (check_frame_start>0)
-		{
-		recv_ping_packet=1;
-		}
-
-
-					/*for (index=0;index<101;index++)
+					 if( (myStrA[0]==0xA5A5) && (myStrA[1]==0xA5A5) )
 					 {
-						 myStrC[index]=(myStrA[index]);//sl_Htons(myStrA[index]) ;
-					 }*/
+							recv_ping_packet=1;
 
-memcpy(myStrC,myStrA,702) ;
-
-					 if( (myStrC[0]==0xA5A5) && (myStrC[1]==0xA5A5) )
-					 {
-						// framesync_t=MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
-						 					//	 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
-					//	 check_frame_start++;
 
 					 }
 					 else
@@ -243,10 +228,6 @@ memcpy(myStrC,myStrA,702) ;
 							 (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 							 myStrA, UDMA_DST_INC_16);
 
-
-
-
-
 				 }
 
 
@@ -256,15 +237,9 @@ memcpy(myStrC,myStrA,702) ;
 				 {
 
 
-					 for (index=351;index<702;index++)
+					 if( (myStrB[351]==0xB9B9) && (myStrB[352]==0xB9B9) )
 					 {
-						myStrC[index]=(myStrB[index]);//sl_Htons(myStrB[index]);
-
-					 }
-					 recv_pong_packet=1;
-
-					 if( (myStrC[351]==0xB9B9) && (myStrC[352]==0xB9B9) )
-					 {
+						 recv_pong_packet=1;
 
 						 check_frame_start++;
 

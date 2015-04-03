@@ -662,10 +662,8 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 
 	/*	if ((recv_pong_packet==1)&&(recv_ping_packet==1))
 				{
-
 						iStatus2= sl_SendTo(Send_SockID, myStrC, 1404, 0,
 									(SlSockAddr_t *)&sAddr, iAddrSize);
-
 						recv_pong_packet=0;
 						recv_ping_packet=0;
 				if	(iStatus2>0)

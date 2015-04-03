@@ -572,6 +572,24 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 	}
 
 	//NonBlocking Socket
+	iStatus = sl_SetSockOpt(Send_SockID, SL_SOL_SOCKET, SL_SO_NONBLOCKING,&nonBlockingValue, sizeof(nonBlockingValue)) ;
+	if (iStatus < 0)
+	{
+		// error
+		sl_Close(Send_SockID);
+		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+	}
+
+	//NonBlocking Socket
+	iStatus = sl_SetSockOpt(Send_SockID2, SL_SOL_SOCKET, SL_SO_NONBLOCKING,&nonBlockingValue, sizeof(nonBlockingValue)) ;
+	if (iStatus < 0)
+	{
+		// error
+		sl_Close(Send_SockID2);
+		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
+	}
+
+	//NonBlocking Socket
 	iStatus = sl_SetSockOpt(Recv_SockID, SL_SOL_SOCKET, SL_SO_NONBLOCKING,&nonBlockingValue, sizeof(nonBlockingValue)) ;
 	if (iStatus < 0)
 	{
@@ -579,6 +597,7 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 		sl_Close(Recv_SockID);
 		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
 	}
+
 
 
 	unsigned short *iter=rx_udp_server;
@@ -619,6 +638,9 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 			{
 				myStrC[index]=(myStrA[index]);
 			}
+
+
+
 			iStatus2= sl_SendTo(Send_SockID, myStrC, 702, 0,
 												(SlSockAddr_t *)&sAddr, iAddrSize);
 
@@ -627,12 +649,12 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 
 		if 	(recv_pong_packet==1)
 		{
-			for (index=351;index<702;index++)
-			{
-				myStrC[index]=(myStrB[index]);
-			}
 
-			iStatus2= sl_SendTo(Send_SockID2, &myStrC[351], 702, 0,
+			for (index=351;index<702;index++)
+								{
+									myStrC[index]=(myStrB[index]);
+								}
+			iStatus2= sl_SendTo(Send_SockID, &myStrC[351], 702, 0,
 												(SlSockAddr_t *)&sAddr, iAddrSize);
 			recv_pong_packet=0;
 		}

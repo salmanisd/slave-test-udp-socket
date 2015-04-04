@@ -620,7 +620,7 @@ void main()
     //
     PinMuxConfig();
 
-    //
+    //ss
     // Configuring UART
     //
     InitTerm();

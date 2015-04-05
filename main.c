@@ -108,7 +108,7 @@ extern unsigned short myStrD[351];
 extern unsigned int recv_ping_packet;
 extern unsigned int recv_pong_packet;
 
-
+extern unsigned int check_frame_start;
 unsigned int spi_ret;
 extern unsigned int c_full;
 
@@ -629,7 +629,7 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 		send_cmd(&CMD_01);
 
 		unsigned int index=0;
-
+while (check_frame_start<=0);
 	while (1)
 	{
 		if 	(recv_ping_packet==1)
@@ -641,8 +641,8 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 
 
 
-			iStatus2= sl_SendTo(Send_SockID, myStrC, 702, 0,
-												(SlSockAddr_t *)&sAddr, iAddrSize);
+			iStatus2= sl_SendTo(Send_SockID, myStrA, 702, 0,
+					(SlSockAddr_t *)&sAddr, iAddrSize);
 
 			recv_ping_packet=0;
 		}
@@ -650,12 +650,12 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 		if 	(recv_pong_packet==1)
 		{
 
-			for (index=351;index<702;index++)
-								{
-									myStrC[index]=(myStrB[index]);
-								}
-			iStatus2= sl_SendTo(Send_SockID, &myStrC[351], 702, 0,
-												(SlSockAddr_t *)&sAddr, iAddrSize);
+			for (index=0;index<351;index++)
+			{
+				myStrD[index]=(myStrB[index]);
+			}
+			iStatus2= sl_SendTo(Send_SockID, myStrB, 702, 0,
+					(SlSockAddr_t *)&sAddr, iAddrSize);
 			recv_pong_packet=0;
 		}
 

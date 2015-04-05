@@ -209,6 +209,7 @@ volatile unsigned long check_frame_start=0;
 
 					 if( (myStrA[0]==0xA5A5) && (myStrA[1]==0xA5A5) )
 					 {
+						 check_frame_start++;
 							recv_ping_packet=1;
 
 

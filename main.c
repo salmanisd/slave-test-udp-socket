@@ -641,8 +641,8 @@ while (check_frame_start<=0);
 
 
 
-			iStatus2= sl_SendTo(Send_SockID, myStrA, 702, 0,
-					(SlSockAddr_t *)&sAddr, iAddrSize);
+			//iStatus2= sl_SendTo(Send_SockID, myStrC, 702, 0,
+			//		(SlSockAddr_t *)&sAddr, iAddrSize);
 
 			recv_ping_packet=0;
 		}
@@ -652,11 +652,13 @@ while (check_frame_start<=0);
 
 			for (index=0;index<351;index++)
 			{
-				myStrD[index]=(myStrB[index]);
+				myStrC[index+351]=(myStrB[index]);
 			}
-			iStatus2= sl_SendTo(Send_SockID, myStrB, 702, 0,
-					(SlSockAddr_t *)&sAddr, iAddrSize);
 			recv_pong_packet=0;
+
+			iStatus2= sl_SendTo(Send_SockID, myStrC, 1404, 0,
+					(SlSockAddr_t *)&sAddr, iAddrSize);
+
 		}
 
 

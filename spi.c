@@ -490,11 +490,7 @@ return 1;
 void frame_sync()
 {	 chk_bufa_flag++;
 
-	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
-							 	MAP_TimerEnable(TIMERA0_BASE, TIMER_A);
-			 					//	 	MAP_TimerDisable(TIMERA0_BASE, TIMER_A);
-							 	//TimerEnable(TIMERA0_BASE, TIMER_A);
-							 	MAP_TimerValueGet(TIMERA0_BASE, TIMER_A);
+
 
 MAP_SPIDisable(GSPI_BASE);
 	//
@@ -529,6 +525,7 @@ MAP_SPIDisable(GSPI_BASE);
 
 	      while(get_sync_cmd_resp==FALSE);
 
+	//      ms_delay(1000);
 	      spi();
 	      }
 

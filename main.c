@@ -662,15 +662,35 @@ while (check_frame_start<=0);
 		}
 
 
-	/*	if ((recv_pong_packet==1)&&(recv_ping_packet==1))
-				{
-						iStatus2= sl_SendTo(Send_SockID, myStrC, 1404, 0,
-									(SlSockAddr_t *)&sAddr, iAddrSize);
-						recv_pong_packet=0;
-						recv_ping_packet=0;
-				if	(iStatus2>0)
-							udploop++;
-				}*/
+		iStatus = sl_RecvFrom(Recv_SockID, iter, 4, 0,
+				( SlSockAddr_t *)&xAddr, (SlSocklen_t*)&iAddrSize );
+
+		if( iStatus < 0 )
+		{
+			packet_count=0;
+		}
+		else if( iStatus > 0 )
+		{
+			recvfromflag++;
+
+			switch (sl_Ntohs(*iter))
+			{
+			case  0x0001:
+				Reset_SYNC=reset_sync_spi();
+				send_cmd(&CMD_01);
+				// start transmission;
+				break;
+
+			case 0x0002:
+				Reset_SYNC=reset_sync_spi();
+				send_cmd(&CMD_02);
+				break;
+
+			default:
+				break;
+
+			}
+		}
 
 
 

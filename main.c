@@ -15,8 +15,6 @@
 #include "prcm.h"
 #include "utils.h"
 #include "uart.h"
-#include "timer.h"
-#include "timer_if.h"
 
 // common interface includes
 #include "udma_if.h"
@@ -26,36 +24,25 @@
 #endif
 
 #include "pinmux.h"
-#include "spi.h"
 
 
 #define APPLICATION_NAME        "UDP Socket"
 #define APPLICATION_VERSION     "1.1.0"
 
-#define IP_ADDR      0xC0A8AD01//   0xC0A8AD01//192.168.173.1			  // 0xc0a8006E /* 192.168.0.110 */
-
+#define IP_ADDR            0xc0a8006E /* 192.168.0.110 */
 #define PORT_NUM           5001
 #define BUF_SIZE           1400
 #define UDP_PACKET_COUNT   1000
 
 // Application specific status/error codes
 typedef enum{
-	// Choosing -0x7D0 to avoid overlap w/ host-driver's error codes
-	UCP_CLIENT_FAILED = -0x7D0,
-	UCP_SERVER_FAILED = UCP_CLIENT_FAILED - 1,
-	DEVICE_NOT_IN_STATION_MODE = UCP_SERVER_FAILED - 1,
+    // Choosing -0x7D0 to avoid overlap w/ host-driver's error codes
+    UCP_CLIENT_FAILED = -0x7D0,
+    UCP_SERVER_FAILED = UCP_CLIENT_FAILED - 1,
+    DEVICE_NOT_IN_STATION_MODE = UCP_SERVER_FAILED - 1,
 
-	STATUS_CODE_MAX = -0xBB8
+    STATUS_CODE_MAX = -0xBB8
 }e_AppStatusCodes;
-
-
-extern struct Command {
-	unsigned short opcode;
-	unsigned short len;
-	unsigned short descriptor;
-};
-
-
 
 //****************************************************************************
 //                      Receiver Wireless Settings
@@ -68,16 +55,13 @@ extern struct Command {
 //                      LOCAL FUNCTION PROTOTYPES
 //****************************************************************************
 int BsdUdpClient(unsigned short usPort);
-int BsdUdpServer(unsigned short usPort);
-int UdpServer(unsigned short usPort,unsigned short destPort);
 static long WlanConnect();
 //static void DisplayBanner();
 static void BoardInit();
 static void InitializeAppVariables();
 static long ConfigureSimpleLinkToDefaultState();
 void spi();
-int reset_sync_spi();
-void ms_delay(int ms);
+
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
 //*****************************************************************************
@@ -91,29 +75,13 @@ unsigned long  g_ulPacketCount = UDP_PACKET_COUNT;
 unsigned char  g_ucSimplelinkstarted = 0;
 unsigned long  g_ulIpAddr = 0;
 unsigned short hh;
+char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;unsigned char spstr[];
 
-unsigned long recvfromflag;
-unsigned long udploop;
+extern unsigned short myStrA[350];				//Holds string from master over SPI
+extern unsigned short myStrB[350];				//Holds string from master over SPI
+extern unsigned short myStrC[350];
+extern unsigned short myStrD[350];
 
-
-extern int Reset_SYNC;
-char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;
-
-extern unsigned short myStrA[351];				//Holds string from master over SPI
-extern unsigned short myStrB[351];				//Holds string from master over SPI
-extern unsigned short myStrC[702];
-
-extern unsigned short myStrD[351];
-
-extern unsigned int recv_ping_packet;
-extern unsigned int recv_pong_packet;
-
-extern unsigned int check_frame_start;
-unsigned int spi_ret;
-extern unsigned int c_full;
-
-
-unsigned short rx_udp_server[2];
 #if defined(ccs) || defined(gcc)
 extern void (* const g_pfnVectors[])(void);
 #endif
@@ -139,94 +107,86 @@ extern uVectorEntry __vector_table;
 //! \return None
 //!
 //*****************************************************************************
-void ms_delay(int ms) {
-	while (ms-- > 0) {
-		volatile int x=5971;
-		while (x-- > 0)
-			__asm("nop");
-	}
-}
-
 void SimpleLinkWlanEventHandler(SlWlanEvent_t *pWlanEvent)
 {
-	if(!pWlanEvent)
-	{
-		return;
-	}
+    if(!pWlanEvent)
+    {
+        return;
+    }
 
-	switch(pWlanEvent->Event)
-	{
-	case SL_WLAN_CONNECT_EVENT:
-	{
-		SET_STATUS_BIT(g_ulStatus, STATUS_BIT_CONNECTION);
+    switch(pWlanEvent->Event)
+    {
+        case SL_WLAN_CONNECT_EVENT:
+        {
+            SET_STATUS_BIT(g_ulStatus, STATUS_BIT_CONNECTION);
 
-		//
-		// Information about the connected AP (like name, MAC etc) will be
-		// available in 'slWlanConnectAsyncResponse_t'-Applications
-		// can use it if required
-		//
-		//  slWlanConnectAsyncResponse_t *pEventData = NULL;
-		// pEventData = &pWlanEvent->EventData.STAandP2PModeWlanConnected;
-		//
+            //
+            // Information about the connected AP (like name, MAC etc) will be
+            // available in 'slWlanConnectAsyncResponse_t'-Applications
+            // can use it if required
+            //
+            //  slWlanConnectAsyncResponse_t *pEventData = NULL;
+            // pEventData = &pWlanEvent->EventData.STAandP2PModeWlanConnected;
+            //
 
-		// Copy new connection SSID and BSSID to global parameters
-		memcpy(g_ucConnectionSSID,pWlanEvent->EventData.
-				STAandP2PModeWlanConnected.ssid_name,
-				pWlanEvent->EventData.STAandP2PModeWlanConnected.ssid_len);
-		memcpy(g_ucConnectionBSSID,
-				pWlanEvent->EventData.STAandP2PModeWlanConnected.bssid,
-				SL_BSSID_LENGTH);
+            // Copy new connection SSID and BSSID to global parameters
+            memcpy(g_ucConnectionSSID,pWlanEvent->EventData.
+                   STAandP2PModeWlanConnected.ssid_name,
+                   pWlanEvent->EventData.STAandP2PModeWlanConnected.ssid_len);
+            memcpy(g_ucConnectionBSSID,
+                   pWlanEvent->EventData.STAandP2PModeWlanConnected.bssid,
+                   SL_BSSID_LENGTH);
 
-		UART_PRINT("[WLAN EVENT] STA Connected to the AP: %s , "
-				"BSSID: %x:%x:%x:%x:%x:%x\n\r",
-				g_ucConnectionSSID,g_ucConnectionBSSID[0],
-				g_ucConnectionBSSID[1],g_ucConnectionBSSID[2],
-				g_ucConnectionBSSID[3],g_ucConnectionBSSID[4],
-				g_ucConnectionBSSID[5]);
-	}
-	break;
+            UART_PRINT("[WLAN EVENT] STA Connected to the AP: %s , "
+                "BSSID: %x:%x:%x:%x:%x:%x\n\r",
+                      g_ucConnectionSSID,g_ucConnectionBSSID[0],
+                      g_ucConnectionBSSID[1],g_ucConnectionBSSID[2],
+                      g_ucConnectionBSSID[3],g_ucConnectionBSSID[4],
+                      g_ucConnectionBSSID[5]);
+        }
+        break;
 
-	case SL_WLAN_DISCONNECT_EVENT:
-	{
-		slWlanConnectAsyncResponse_t*  pEventData = NULL;
+        case SL_WLAN_DISCONNECT_EVENT:
+        {
+            slWlanConnectAsyncResponse_t*  pEventData = NULL;
 
-		CLR_STATUS_BIT(g_ulStatus, STATUS_BIT_CONNECTION);
-		CLR_STATUS_BIT(g_ulStatus, STATUS_BIT_IP_AQUIRED);
+            CLR_STATUS_BIT(g_ulStatus, STATUS_BIT_CONNECTION);
+            CLR_STATUS_BIT(g_ulStatus, STATUS_BIT_IP_AQUIRED);
 
-		pEventData = &pWlanEvent->EventData.STAandP2PModeDisconnected;
+            pEventData = &pWlanEvent->EventData.STAandP2PModeDisconnected;
 
-		// If the user has initiated 'Disconnect' request,
-		//'reason_code' is SL_USER_INITIATED_DISCONNECTION
-		if(SL_USER_INITIATED_DISCONNECTION == pEventData->reason_code)
-		{
-			UART_PRINT("[WLAN EVENT]Device disconnected from the AP: %s,"
-					"BSSID: %x:%x:%x:%x:%x:%x on application's request \n\r",
-					g_ucConnectionSSID,g_ucConnectionBSSID[0],
-					g_ucConnectionBSSID[1],g_ucConnectionBSSID[2],
-					g_ucConnectionBSSID[3],g_ucConnectionBSSID[4],
-					g_ucConnectionBSSID[5]);
-		}
-		else
-		{
-			UART_PRINT("[WLAN ERROR]Device disconnected from the AP AP: %s,"
-					"BSSID: %x:%x:%x:%x:%x:%x on an ERROR..!! \n\r",
-					g_ucConnectionSSID,g_ucConnectionBSSID[0],
-					g_ucConnectionBSSID[1],g_ucConnectionBSSID[2],
-					g_ucConnectionBSSID[3],g_ucConnectionBSSID[4],
-					g_ucConnectionBSSID[5]);
-		}
-		memset(g_ucConnectionSSID,0,sizeof(g_ucConnectionSSID));
-		memset(g_ucConnectionBSSID,0,sizeof(g_ucConnectionBSSID));
-	}
-	break;
+            // If the user has initiated 'Disconnect' request,
+            //'reason_code' is SL_USER_INITIATED_DISCONNECTION
+            if(SL_USER_INITIATED_DISCONNECTION == pEventData->reason_code)
+            {
+                UART_PRINT("[WLAN EVENT]Device disconnected from the AP: %s,"
+                "BSSID: %x:%x:%x:%x:%x:%x on application's request \n\r",
+                           g_ucConnectionSSID,g_ucConnectionBSSID[0],
+                           g_ucConnectionBSSID[1],g_ucConnectionBSSID[2],
+                           g_ucConnectionBSSID[3],g_ucConnectionBSSID[4],
+                           g_ucConnectionBSSID[5]);
+            }
+            else
+            {
+                UART_PRINT("[WLAN ERROR]Device disconnected from the AP AP: %s,"
+                "BSSID: %x:%x:%x:%x:%x:%x on an ERROR..!! \n\r",
+                           g_ucConnectionSSID,g_ucConnectionBSSID[0],
+                           g_ucConnectionBSSID[1],g_ucConnectionBSSID[2],
+                           g_ucConnectionBSSID[3],g_ucConnectionBSSID[4],
+                           g_ucConnectionBSSID[5]);
+            }
+            memset(g_ucConnectionSSID,0,sizeof(g_ucConnectionSSID));
+            memset(g_ucConnectionBSSID,0,sizeof(g_ucConnectionBSSID));
+        }
+        break;
 
-	default:
-	{
-		UART_PRINT("[WLAN EVENT] Unexpected event [0x%x]\n\r",
-				pWlanEvent->Event);
-	}
-	break;
-	}
+        default:
+        {
+            UART_PRINT("[WLAN EVENT] Unexpected event [0x%x]\n\r",
+                       pWlanEvent->Event);
+        }
+        break;
+    }
 }
 
 //*****************************************************************************
@@ -241,48 +201,48 @@ void SimpleLinkWlanEventHandler(SlWlanEvent_t *pWlanEvent)
 //*****************************************************************************
 void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pNetAppEvent)
 {
-	if(!pNetAppEvent)
-	{
-		return;
-	}
+    if(!pNetAppEvent)
+    {
+        return;
+    }
 
-	switch(pNetAppEvent->Event)
-	{
-	case SL_NETAPP_IPV4_IPACQUIRED_EVENT:
-	{
-		SlIpV4AcquiredAsync_t *pEventData = NULL;
+    switch(pNetAppEvent->Event)
+    {
+        case SL_NETAPP_IPV4_IPACQUIRED_EVENT:
+        {
+            SlIpV4AcquiredAsync_t *pEventData = NULL;
 
-		SET_STATUS_BIT(g_ulStatus, STATUS_BIT_IP_AQUIRED);
+            SET_STATUS_BIT(g_ulStatus, STATUS_BIT_IP_AQUIRED);
 
-		//Ip Acquired Event Data
-		pEventData = &pNetAppEvent->EventData.ipAcquiredV4;
+            //Ip Acquired Event Data
+            pEventData = &pNetAppEvent->EventData.ipAcquiredV4;
 
-		g_ulIpAddr = pEventData->ip;
+            g_ulIpAddr = pEventData->ip;
 
-		//Gateway IP address
-		g_ulGatewayIP = pEventData->gateway;
+            //Gateway IP address
+            g_ulGatewayIP = pEventData->gateway;
 
-		UART_PRINT("[NETAPP EVENT] IP Acquired: IP=%d.%d.%d.%d , "
-				"Gateway=%d.%d.%d.%d\n\r",
+            UART_PRINT("[NETAPP EVENT] IP Acquired: IP=%d.%d.%d.%d , "
+                        "Gateway=%d.%d.%d.%d\n\r",
 
-				SL_IPV4_BYTE(g_ulIpAddr,3),
-				SL_IPV4_BYTE(g_ulIpAddr,2),
-				SL_IPV4_BYTE(g_ulIpAddr,1),
-				SL_IPV4_BYTE(g_ulIpAddr,0),
-				SL_IPV4_BYTE(g_ulGatewayIP,3),
-				SL_IPV4_BYTE(g_ulGatewayIP,2),
-				SL_IPV4_BYTE(g_ulGatewayIP,1),
-				SL_IPV4_BYTE(g_ulGatewayIP,0));
-	}
-	break;
+                        SL_IPV4_BYTE(g_ulIpAddr,3),
+                        SL_IPV4_BYTE(g_ulIpAddr,2),
+                        SL_IPV4_BYTE(g_ulIpAddr,1),
+                        SL_IPV4_BYTE(g_ulIpAddr,0),
+                        SL_IPV4_BYTE(g_ulGatewayIP,3),
+                        SL_IPV4_BYTE(g_ulGatewayIP,2),
+                        SL_IPV4_BYTE(g_ulGatewayIP,1),
+                        SL_IPV4_BYTE(g_ulGatewayIP,0));
+        }
+        break;
 
-	default:
-	{
-		UART_PRINT("[NETAPP EVENT] Unexpected event [0x%x] \n\r",
-				pNetAppEvent->Event);
-	}
-	break;
-	}
+        default:
+        {
+            UART_PRINT("[NETAPP EVENT] Unexpected event [0x%x] \n\r",
+                       pNetAppEvent->Event);
+        }
+        break;
+    }
 }
 
 //*****************************************************************************
@@ -296,18 +256,18 @@ void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pNetAppEvent)
 //*****************************************************************************
 void SimpleLinkGeneralEventHandler(SlDeviceEvent_t *pDevEvent)
 {
-	if(!pDevEvent)
-	{
-		return;
-	}
+    if(!pDevEvent)
+    {
+        return;
+    }
 
-	//
-	// Most of the general errors are not FATAL are are to be handled
-	// appropriately by the application
-	//
-	UART_PRINT("[GENERAL EVENT] - ID=[%d] Sender=[%d]\n\n",
-			pDevEvent->EventData.deviceEvent.status,
-			pDevEvent->EventData.deviceEvent.sender);
+    //
+    // Most of the general errors are not FATAL are are to be handled
+    // appropriately by the application
+    //
+    UART_PRINT("[GENERAL EVENT] - ID=[%d] Sender=[%d]\n\n",
+               pDevEvent->EventData.deviceEvent.status,
+               pDevEvent->EventData.deviceEvent.sender);
 }
 
 //*****************************************************************************
@@ -318,26 +278,26 @@ void SimpleLinkGeneralEventHandler(SlDeviceEvent_t *pDevEvent)
 //*****************************************************************************
 static void InitializeAppVariables()
 {
-	g_ulStatus = 0;
-	g_ulGatewayIP = 0;
-	memset(g_ucConnectionSSID,0,sizeof(g_ucConnectionSSID));
-	memset(g_ucConnectionBSSID,0,sizeof(g_ucConnectionBSSID));
-	g_ulDestinationIp = 0xC0A88901; //1921681371
-	g_uiPortNum = PORT_NUM;
-	g_ulPacketCount = UDP_PACKET_COUNT;
+    g_ulStatus = 0;
+    g_ulGatewayIP = 0;
+    memset(g_ucConnectionSSID,0,sizeof(g_ucConnectionSSID));
+    memset(g_ucConnectionBSSID,0,sizeof(g_ucConnectionBSSID));
+    g_ulDestinationIp = 0xC0A88901; //1921681371
+    g_uiPortNum = PORT_NUM;
+    g_ulPacketCount = UDP_PACKET_COUNT;
 }
 
 void SimpleLinkHttpServerCallback(SlHttpServerEvent_t *pHttpEvent,
-		SlHttpServerResponse_t *pHttpResponse)
+                                  SlHttpServerResponse_t *pHttpResponse)
 {
-	// Unused in this application
+    // Unused in this application
 }
 
 void SimpleLinkSockEventHandler(SlSockEvent_t *pSock)
 {
-	//
-	// This application doesn't work w/ socket - Events are not expected
-	//
+    //
+    // This application doesn't work w/ socket - Events are not expected
+    //
 
 }
 
@@ -358,347 +318,199 @@ void SimpleLinkSockEventHandler(SlSockEvent_t *pSock)
 //*****************************************************************************
 static long ConfigureSimpleLinkToDefaultState()
 {
-	SlVersionFull   ver = {0};
-	_WlanRxFilterOperationCommandBuff_t  RxFilterIdMask = {0};
+    SlVersionFull   ver = {0};
+    _WlanRxFilterOperationCommandBuff_t  RxFilterIdMask = {0};
 
-	unsigned char ucVal = 1;
-	unsigned char ucConfigOpt = 0;
-	unsigned char ucConfigLen = 0;
-	unsigned char ucPower = 0;
+    unsigned char ucVal = 1;
+    unsigned char ucConfigOpt = 0;
+    unsigned char ucConfigLen = 0;
+    unsigned char ucPower = 0;
 
-	long lRetVal = -1;
-	long lMode = -1;
+    long lRetVal = -1;
+    long lMode = -1;
 
-	lMode = sl_Start(0, 0, 0);
-	ASSERT_ON_ERROR(lMode);
+    lMode = sl_Start(0, 0, 0);
+    ASSERT_ON_ERROR(lMode);
 
-	// If the device is not in station-mode, try configuring it in station-mode
-	if (ROLE_STA != lMode)
-	{
-		if (ROLE_AP == lMode)
-		{
-			// If the device is in AP mode, we need to wait for this event
-			// before doing anything
-			while(!IS_IP_ACQUIRED(g_ulStatus))
-			{
+    // If the device is not in station-mode, try configuring it in station-mode
+    if (ROLE_STA != lMode)
+    {
+        if (ROLE_AP == lMode)
+        {
+            // If the device is in AP mode, we need to wait for this event
+            // before doing anything
+            while(!IS_IP_ACQUIRED(g_ulStatus))
+            {
 #ifndef SL_PLATFORM_MULTI_THREADED
-				_SlNonOsMainLoopTask();
+              _SlNonOsMainLoopTask();
 #endif
-			}
-		}
+            }
+        }
 
-		// Switch to STA role and restart
-		lRetVal = sl_WlanSetMode(ROLE_STA);
-		ASSERT_ON_ERROR(lRetVal);
+        // Switch to STA role and restart
+        lRetVal = sl_WlanSetMode(ROLE_STA);
+        ASSERT_ON_ERROR(lRetVal);
 
-		lRetVal = sl_Stop(0xFF);
-		ASSERT_ON_ERROR(lRetVal);
+        lRetVal = sl_Stop(0xFF);
+        ASSERT_ON_ERROR(lRetVal);
 
-		lRetVal = sl_Start(0, 0, 0);
-		ASSERT_ON_ERROR(lRetVal);
+        lRetVal = sl_Start(0, 0, 0);
+        ASSERT_ON_ERROR(lRetVal);
 
-		// Check if the device is in station again
-		if (ROLE_STA != lRetVal)
-		{
-			// We don't want to proceed if the device is not coming up in STA-mode
-			return DEVICE_NOT_IN_STATION_MODE;
-		}
-	}
+        // Check if the device is in station again
+        if (ROLE_STA != lRetVal)
+        {
+            // We don't want to proceed if the device is not coming up in STA-mode
+            return DEVICE_NOT_IN_STATION_MODE;
+        }
+    }
 
-	// Get the device's version-information
-	ucConfigOpt = SL_DEVICE_GENERAL_VERSION;
-	ucConfigLen = sizeof(ver);
-	lRetVal = sl_DevGet(SL_DEVICE_GENERAL_CONFIGURATION, &ucConfigOpt,
-			&ucConfigLen, (unsigned char *)(&ver));
-	ASSERT_ON_ERROR(lRetVal);
-
-	UART_PRINT("Host Driver Version: %s\n\r",SL_DRIVER_VERSION);
-	UART_PRINT("Build Version %d.%d.%d.%d.31.%d.%d.%d.%d.%d.%d.%d.%d\n\r",
-			ver.NwpVersion[0],ver.NwpVersion[1],ver.NwpVersion[2],ver.NwpVersion[3],
-			ver.ChipFwAndPhyVersion.FwVersion[0],ver.ChipFwAndPhyVersion.FwVersion[1],
-			ver.ChipFwAndPhyVersion.FwVersion[2],ver.ChipFwAndPhyVersion.FwVersion[3],
-			ver.ChipFwAndPhyVersion.PhyVersion[0],ver.ChipFwAndPhyVersion.PhyVersion[1],
-			ver.ChipFwAndPhyVersion.PhyVersion[2],ver.ChipFwAndPhyVersion.PhyVersion[3]);
-
-	// Set connection policy to Auto + SmartConfig
-	//      (Device's default connection policy)
-	lRetVal = sl_WlanPolicySet(SL_POLICY_CONNECTION,
-			SL_CONNECTION_POLICY(1, 0, 0, 0, 1), NULL, 0);
-	ASSERT_ON_ERROR(lRetVal);
-
-	// Remove all profiles
-	lRetVal = sl_WlanProfileDel(0xFF);
-	ASSERT_ON_ERROR(lRetVal);
-
-
-
-	//
-	// Device in station-mode. Disconnect previous connection if any
-	// The function returns 0 if 'Disconnected done', negative number if already
-	// disconnected Wait for 'disconnection' event if 0 is returned, Ignore
-	// other return-codes
-	//
-	lRetVal = sl_WlanDisconnect();
-	if(0 == lRetVal)
-	{
-		// Wait
-		while(IS_CONNECTED(g_ulStatus))
-		{
-#ifndef SL_PLATFORM_MULTI_THREADED
-			_SlNonOsMainLoopTask();
-#endif
-		}
-	}
-
-	//     Enable DHCP client
-	   lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
+    // Get the device's version-information
+    ucConfigOpt = SL_DEVICE_GENERAL_VERSION;
+    ucConfigLen = sizeof(ver);
+    lRetVal = sl_DevGet(SL_DEVICE_GENERAL_CONFIGURATION, &ucConfigOpt,
+                                &ucConfigLen, (unsigned char *)(&ver));
     ASSERT_ON_ERROR(lRetVal);
 
-	/*SlNetCfgIpV4Args_t ipV4;
-	ipV4.ipV4 = (unsigned long)SL_IPV4_VAL(192,168,173,54); // unsigned long IP  address
-	ipV4.ipV4Mask = (unsigned long)SL_IPV4_VAL(255,255,255,0); // unsigned long Subnet mask for this AP/P2P
-	ipV4.ipV4Gateway = (unsigned long)SL_IPV4_VAL(192,168,173,0); // unsigned long Default gateway address
-	ipV4.ipV4DnsServer = (unsigned long)SL_IPV4_VAL(160,85,193,100); // unsigned long DNS server address
-	lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (unsigned char *) &ipV4);
-	sl_Stop(0);
-	sl_Start(NULL,NULL,NULL);
-	ASSERT_ON_ERROR(lRetVal);*/
+    UART_PRINT("Host Driver Version: %s\n\r",SL_DRIVER_VERSION);
+    UART_PRINT("Build Version %d.%d.%d.%d.31.%d.%d.%d.%d.%d.%d.%d.%d\n\r",
+    ver.NwpVersion[0],ver.NwpVersion[1],ver.NwpVersion[2],ver.NwpVersion[3],
+    ver.ChipFwAndPhyVersion.FwVersion[0],ver.ChipFwAndPhyVersion.FwVersion[1],
+    ver.ChipFwAndPhyVersion.FwVersion[2],ver.ChipFwAndPhyVersion.FwVersion[3],
+    ver.ChipFwAndPhyVersion.PhyVersion[0],ver.ChipFwAndPhyVersion.PhyVersion[1],
+    ver.ChipFwAndPhyVersion.PhyVersion[2],ver.ChipFwAndPhyVersion.PhyVersion[3]);
 
-	// Disable scan
-	ucConfigOpt = SL_SCAN_POLICY(0);
-	lRetVal = sl_WlanPolicySet(SL_POLICY_SCAN , ucConfigOpt, NULL, 0);
-	ASSERT_ON_ERROR(lRetVal);
+    // Set connection policy to Auto + SmartConfig
+    //      (Device's default connection policy)
+    lRetVal = sl_WlanPolicySet(SL_POLICY_CONNECTION,
+                                SL_CONNECTION_POLICY(1, 0, 0, 0, 1), NULL, 0);
+    ASSERT_ON_ERROR(lRetVal);
 
-	// Set Tx power level for station mode
-	// Number between 0-15, as dB offset from max power - 0 will set max power
-	ucPower = 0;
-	lRetVal = sl_WlanSet(SL_WLAN_CFG_GENERAL_PARAM_ID,
-			WLAN_GENERAL_PARAM_OPT_STA_TX_POWER, 1, (unsigned char *)&ucPower);
-	ASSERT_ON_ERROR(lRetVal);
+    // Remove all profiles
+    lRetVal = sl_WlanProfileDel(0xFF);
+    ASSERT_ON_ERROR(lRetVal);
 
-	// Set PM policy to normal
-	lRetVal = sl_WlanPolicySet(SL_POLICY_PM , SL_NORMAL_POLICY, NULL, 0);
-	ASSERT_ON_ERROR(lRetVal);
 
-	// Unregister mDNS services
-	lRetVal = sl_NetAppMDNSUnRegisterService(0, 0);
-	ASSERT_ON_ERROR(lRetVal);
 
-	// Remove  all 64 filters (8*8)
-	memset(RxFilterIdMask.FilterIdMask, 0xFF, 8);
-	lRetVal = sl_WlanRxFilterSet(SL_REMOVE_RX_FILTER, (_u8 *)&RxFilterIdMask,
-			sizeof(_WlanRxFilterOperationCommandBuff_t));
-	ASSERT_ON_ERROR(lRetVal);
+    //
+    // Device in station-mode. Disconnect previous connection if any
+    // The function returns 0 if 'Disconnected done', negative number if already
+    // disconnected Wait for 'disconnection' event if 0 is returned, Ignore
+    // other return-codes
+    //
+    lRetVal = sl_WlanDisconnect();
+    if(0 == lRetVal)
+    {
+        // Wait
+        while(IS_CONNECTED(g_ulStatus))
+        {
+#ifndef SL_PLATFORM_MULTI_THREADED
+              _SlNonOsMainLoopTask();
+#endif
+        }
+    }
 
-	lRetVal = sl_Stop(SL_STOP_TIMEOUT);
-	ASSERT_ON_ERROR(lRetVal);
+    // Enable DHCP client
+    lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
+    ASSERT_ON_ERROR(lRetVal);
 
-	InitializeAppVariables();
+    // Disable scan
+    ucConfigOpt = SL_SCAN_POLICY(0);
+    lRetVal = sl_WlanPolicySet(SL_POLICY_SCAN , ucConfigOpt, NULL, 0);
+    ASSERT_ON_ERROR(lRetVal);
 
-	return lRetVal; // Success
+    // Set Tx power level for station mode
+    // Number between 0-15, as dB offset from max power - 0 will set max power
+    ucPower = 0;
+    lRetVal = sl_WlanSet(SL_WLAN_CFG_GENERAL_PARAM_ID,
+            WLAN_GENERAL_PARAM_OPT_STA_TX_POWER, 1, (unsigned char *)&ucPower);
+    ASSERT_ON_ERROR(lRetVal);
+
+    // Set PM policy to normal
+    lRetVal = sl_WlanPolicySet(SL_POLICY_PM , SL_NORMAL_POLICY, NULL, 0);
+    ASSERT_ON_ERROR(lRetVal);
+
+    // Unregister mDNS services
+    lRetVal = sl_NetAppMDNSUnRegisterService(0, 0);
+    ASSERT_ON_ERROR(lRetVal);
+
+    // Remove  all 64 filters (8*8)
+    memset(RxFilterIdMask.FilterIdMask, 0xFF, 8);
+    lRetVal = sl_WlanRxFilterSet(SL_REMOVE_RX_FILTER, (_u8 *)&RxFilterIdMask,
+                       sizeof(_WlanRxFilterOperationCommandBuff_t));
+    ASSERT_ON_ERROR(lRetVal);
+
+    lRetVal = sl_Stop(SL_STOP_TIMEOUT);
+    ASSERT_ON_ERROR(lRetVal);
+
+    InitializeAppVariables();
+
+    return lRetVal; // Success
 }
 
-//****************************************************************************
-//
-//
-//****************************************************************************
 
-unsigned int timerValue = 0;
-unsigned int tempCnt = 0;
-int UdpServer(unsigned short serverPort,unsigned short destPort)
+//****************************************************************************
+//
+//! \brief Opening a UDP client side socket and sending data
+//!
+//! This function opens a UDP socket and tries to connect to a Server IP_ADDR
+//!    waiting on port PORT_NUM.
+//!    Then the function will send 1000 UDP packets to the server.
+//!
+//! \param[in]  port number on which the server will be listening on
+//!
+//! \return    0 on success, -1 on Error.
+//
+//****************************************************************************
+int BsdUdpClient(unsigned short usPort)
 {
-	SlSockAddrIn_t  xAddr;
-	SlSockAddrIn_t  sAddr;
-	SlSockAddrIn_t  sLocalAddr;
-	int             iCounter;
-	int             iAddrSize;
-	int             Send_SockID,Send_SockID2,Recv_SockID;
+	unsigned int index=0;
+    int             iCounter;
+    short           sTestBufLen;
+    SlSockAddrIn_t  sAddr;
+    int             iAddrSize;
+    int             iSockID;
+    int             iStatus;
+    long            lLoopCount = 0;
 
-	int             iStatus,iStatus2;
-	long            lLoopCount = 0;
-	short           sTestBufLen;
-	int 			nonBlockingValue=1;
-	int   		    packet_count=0;
-	//filling the UDP server socket address
-	char udpstr[2];
-	udpstr[0]='A';
-	udpstr[1]='B';
-
-	sLocalAddr.sin_family = SL_AF_INET;
-	sLocalAddr.sin_port = sl_Htons((unsigned short) serverPort);
-	sLocalAddr.sin_addr.s_addr =0;
-
-	sAddr.sin_family = SL_AF_INET;
-	sAddr.sin_port = sl_Htons((unsigned short)destPort);
-	sAddr.sin_addr.s_addr =sl_Htonl(SL_IPV4_VAL(192,168,173,1));// sl_Htonl((unsigned int)g_ulDestinationIp);192,168,173,1
-
-	xAddr.sin_family = SL_AF_INET;
-	xAddr.sin_port = sl_Htons((unsigned short)5000);
-	xAddr.sin_addr.s_addr =sl_Htonl(SL_IPV4_VAL(120,0,0,0));
-
-	iAddrSize = sizeof(SlSockAddrIn_t);
-
-	// creating a UDP socket
-	Send_SockID = sl_Socket(SL_AF_INET, SL_SOCK_DGRAM, 0);
-	if (Send_SockID < 0)
-	{
-		// error
-		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-	}
-
-	// creating a UDP socket
-		Send_SockID2 = sl_Socket(SL_AF_INET, SL_SOCK_DGRAM, 0);
-		if (Send_SockID2 < 0)
-		{
-			// error
-			ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-		}
-
-	// creating a UDP socket
-	Recv_SockID = sl_Socket(SL_AF_INET, SL_SOCK_DGRAM, 0);
-	if (Recv_SockID < 0)
-	{
-		// error
-		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-	}
-
-	// binding the UDP socket to the UDP server address
-	iStatus = sl_Bind(Recv_SockID, (SlSockAddr_t *) &sLocalAddr, iAddrSize);
-	if (iStatus < 0)
-	{
-		// error
-		sl_Close(Recv_SockID);
-		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-	}
-
-	//NonBlocking Socket
-	iStatus = sl_SetSockOpt(Send_SockID, SL_SOL_SOCKET, SL_SO_NONBLOCKING,&nonBlockingValue, sizeof(nonBlockingValue)) ;
-	if (iStatus < 0)
-	{
-		// error
-		sl_Close(Send_SockID);
-		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-	}
-
-	//NonBlocking Socket
-	iStatus = sl_SetSockOpt(Send_SockID2, SL_SOL_SOCKET, SL_SO_NONBLOCKING,&nonBlockingValue, sizeof(nonBlockingValue)) ;
-	if (iStatus < 0)
-	{
-		// error
-		sl_Close(Send_SockID2);
-		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-	}
-
-	//NonBlocking Socket
-	iStatus = sl_SetSockOpt(Recv_SockID, SL_SOL_SOCKET, SL_SO_NONBLOCKING,&nonBlockingValue, sizeof(nonBlockingValue)) ;
-	if (iStatus < 0)
-	{
-		// error
-		sl_Close(Recv_SockID);
-		ASSERT_ON_ERROR(UCP_SERVER_FAILED);
-	}
+char stringbuf[]="Testing Communication";
 
 
+UART_PRINT("entered bsdudpclient \n\r");
+   // sTestBufLen  = BUF_SIZE;
+       sTestBufLen  = 10;
+    //filling the UDP server socket address
+    sAddr.sin_family = SL_AF_INET;
+    sAddr.sin_port = sl_Htons((unsigned short)usPort);
+    sAddr.sin_addr.s_addr = sl_Htonl((unsigned int)g_ulDestinationIp);
 
-	unsigned short *iter=rx_udp_server;
-	udploop=0;
-	struct Command CMD_01;
+    iAddrSize = sizeof(SlSockAddrIn_t);
 
-	CMD_01.opcode=0x0001; //1 to start transmission
-	CMD_01.len=0x0040; //length 64 bits
-	CMD_01.descriptor=0x6789; //fixed to 6789 for now
-
-	struct Command CMD_02;
-
-	CMD_02.opcode=0x0002; //2 to stop transmission
-	CMD_02.len=0x0040; //length 64 bits
-	CMD_02.descriptor=0x6789; //fixed to 6789 for now
-
-
-	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
-	MAP_TimerEnable(TIMERA0_BASE, TIMER_A);
-
-
-	UART_PRINT("calling  sync");
+    // creating a UDP socket
+    iSockID = sl_Socket(SL_AF_INET,SL_SOCK_DGRAM, 0);
+    if( iSockID < 0 )
+    {
+        // error
+        ASSERT_ON_ERROR(UCP_CLIENT_FAILED);
+    }
 
 
-
-		Reset_SYNC=reset_sync_spi();
-
-		UART_PRINT("returned from sync");
-		send_cmd(&CMD_01);
-
-		unsigned int index=0;
-while (check_frame_start<=0);
-	while (1)
-	{
-		if 	(recv_ping_packet==1)
-		{
-			for (index=0;index<351;index++)
-			{
-				myStrC[index]=(myStrA[index]);
-			}
+    UART_PRINT("created socket \n\r");
 
 
+while (0)
+{
 
-			//iStatus2= sl_SendTo(Send_SockID, myStrC, 702, 0,
-			//		(SlSockAddr_t *)&sAddr, iAddrSize);
+    }
 
-			recv_ping_packet=0;
-		}
+    UART_PRINT("Sent %u packets successfully\n\r",g_ulPacketCount);
 
-		if 	(recv_pong_packet==1)
-		{
+    //closing the socket after sending 1000 packets
+    sl_Close(iSockID);
 
-			for (index=0;index<351;index++)
-			{
-				myStrC[index+351]=(myStrB[index]);
-			}
-			recv_pong_packet=0;
-
-			iStatus2= sl_SendTo(Send_SockID, myStrC, 1404, 0,
-					(SlSockAddr_t *)&sAddr, iAddrSize);
-
-		}
-
-
-		iStatus = sl_RecvFrom(Recv_SockID, iter, 4, 0,
-				( SlSockAddr_t *)&xAddr, (SlSocklen_t*)&iAddrSize );
-
-		if( iStatus < 0 )
-		{
-			packet_count=0;
-		}
-		else if( iStatus > 0 )
-		{
-			recvfromflag++;
-
-			switch (sl_Ntohs(*iter))
-			{
-			case  0x0001:
-				Reset_SYNC=reset_sync_spi();
-				send_cmd(&CMD_01);
-				// start transmission;
-				break;
-
-			case 0x0002:
-				Reset_SYNC=reset_sync_spi();
-				send_cmd(&CMD_02);
-				break;
-
-			default:
-				break;
-
-			}
-		}
-
-
-
-
-
-	}//while
-
+    return SUCCESS;
 }
+
 
 //****************************************************************************
 //
@@ -717,27 +529,27 @@ while (check_frame_start<=0);
 //****************************************************************************
 static long WlanConnect()
 {
-	SlSecParams_t secParams = {0};
-	long lRetVal = 0;
+    SlSecParams_t secParams = {0};
+    long lRetVal = 0;
 
-	secParams.Key = (signed char*)SECURITY_KEY;
-	secParams.KeyLen = strlen(SECURITY_KEY);
-	secParams.Type = SECURITY_TYPE;
+    secParams.Key = (signed char*)SECURITY_KEY;
+    secParams.KeyLen = strlen(SECURITY_KEY);
+    secParams.Type = SECURITY_TYPE;
 
-	lRetVal = sl_WlanConnect((signed char*)SSID_NAME, strlen(SSID_NAME), 0, \
-			&secParams, 0);
-	ASSERT_ON_ERROR(lRetVal);
+    lRetVal = sl_WlanConnect((signed char*)SSID_NAME, strlen(SSID_NAME), 0, \
+                                    &secParams, 0);
+    ASSERT_ON_ERROR(lRetVal);
 
-	while((!IS_CONNECTED(g_ulStatus)) || (!IS_IP_ACQUIRED(g_ulStatus)))
-	{
-		// Wait for WLAN Event
+    while((!IS_CONNECTED(g_ulStatus)) || (!IS_IP_ACQUIRED(g_ulStatus)))
+    {
+        // Wait for WLAN Event
 #ifndef SL_PLATFORM_MULTI_THREADED
-		_SlNonOsMainLoopTask();
+        _SlNonOsMainLoopTask();
 #endif
 
-	}
+    }
 
-	return SUCCESS;
+    return SUCCESS;
 }
 
 //*****************************************************************************
@@ -752,138 +564,127 @@ static long WlanConnect()
 static void
 BoardInit(void)
 {
-	/* In case of TI-RTOS vector table is initialize by OS itself */
+/* In case of TI-RTOS vector table is initialize by OS itself */
 #ifndef USE_TIRTOS
-	//
-	// Set vector table base
-	//
+  //
+  // Set vector table base
+  //
 #if defined(ccs) || defined(gcc)
-	MAP_IntVTableBaseSet((unsigned long)&g_pfnVectors[0]);
+    MAP_IntVTableBaseSet((unsigned long)&g_pfnVectors[0]);
 #endif
 #if defined(ewarm)
-	MAP_IntVTableBaseSet((unsigned long)&__vector_table);
+    MAP_IntVTableBaseSet((unsigned long)&__vector_table);
 #endif
 #endif
-	//
-	// Enable Processor
-	//
-	MAP_IntMasterEnable();
-	MAP_IntEnable(FAULT_SYSTICK);
+    //
+    // Enable Processor
+    //
+    MAP_IntMasterEnable();
+    MAP_IntEnable(FAULT_SYSTICK);
 
-	PRCMCC3200MCUInit();
+    PRCMCC3200MCUInit();
 }
 
 //****************************************************************************
 //                            MAIN FUNCTION
-//*****************************************g***********************************
+//****************************************************************************
 void main()
 {
+    long lRetVal = -1;
 
-	long lRetVal = -1;
+    //
+    // Board Initialization
+    //
+    BoardInit();
 
-	//
-	// Board Initialization
-	//
-	BoardInit();
+    //
+    // uDMA Initialization
+    //
+    UDMAInit();
 
-	//
-	// uDMA Initialization
-	//
-	UDMAInit();
+    //
+    // Configure the pinmux settings for the peripherals UART AND SPI
+    //
+    PinMuxConfig();
 
-	//
-	// Configure the pinmux settings for the peripherals UART AND SPI
-	//
-	PinMuxConfig();
-
-	//
-	// Configuring UART
-	//
-	InitTerm();
-
-
-	//
-	// Display banner
-	//
-	//  DisplayBanner(APPLICATION_NAME);
-
-	InitializeAppVariables();
-	//   UART_PRINT("spi");
-
-	//    Reset_SYNC=reset_sync_spi();
-	//      UART_PRINT("enter spi");
-	//   spi();
-	//      UART_PRINT("exit spi");
-
-	//ms_delay(10000);
-	//UART_PRINT("end delay");
+    //
+    // Configuring UART
+    //
+    InitTerm();
 
 
+    //
+    // Display banner
+    //
+  //  DisplayBanner(APPLICATION_NAME);
 
-	//spi();
-
-	//sync_spi();
-
-	//
-	// Following function configure the device to default state by cleaning
-	// the persistent settings stored in NVMEM (viz. connection profiles &
-	// policies, power policy etc)
-	//
-	// Applications may choose to skip this step if the developer is sure
-	// that the device is in its desired state at start of applicaton
-	//
-	// Note that all profiles and persistent settings that were done on the
-	// device will be lost
-	//
-	lRetVal = ConfigureSimpleLinkToDefaultState();
-
-	if(lRetVal < 0)
-	{
-		if (DEVICE_NOT_IN_STATION_MODE == lRetVal)
-			UART_PRINT("Failed to configure the device in its default state \n\r");
-
-		LOOP_FOREVER();
-	}
-
-	UART_PRINT("Device is configured in default state \n\r");
-
-	//
-	// Asumption is that the device is configured in station mode already
-	// and it is in its default state
-	//
-	lRetVal = sl_Start(0, 0, 0);
-	if (lRetVal < 0 || lRetVal != ROLE_STA)
-	{
-		UART_PRINT("Failed to start the device \n\r");
-		LOOP_FOREVER();
-	}
-
-	UART_PRINT("Device started as STATION \n\r");
-
-	UART_PRINT("Connecting to AP: %s ...\r\n",SSID_NAME);
-
-	//
-	//Connecting to WLAN AP
-	//
-	lRetVal = WlanConnect();
-	if(lRetVal < 0)
-	{
-		UART_PRINT("Failed to establish connection w/ an AP \n\r");
-		LOOP_FOREVER();
-	}
-
-	UART_PRINT("Connected to AP: %s \n\r",SSID_NAME);
-
-	UART_PRINT("Device IP: %d.%d.%d.%d\n\r\n\r",
-			SL_IPV4_BYTE(g_ulIpAddr,3),
-			SL_IPV4_BYTE(g_ulIpAddr,2),
-			SL_IPV4_BYTE(g_ulIpAddr,1),
-			SL_IPV4_BYTE(g_ulIpAddr,0));
+    InitializeAppVariables();
+    spi();
+    while(1);
+    {
 
 
+    	 /*	for (index=0;index<350;index++)
+    			    	{		myStrC[index]=myStrA[index];
 
+    			    	}*/
+    }
+    //
+    // Following function configure the device to default state by cleaning
+    // the persistent settings stored in NVMEM (viz. connection profiles &
+    // policies, power policy etc)
+    //
+    // Applications may choose to skip this step if the developer is sure
+    // that the device is in its desired state at start of applicaton
+    //
+    // Note that all profiles and persistent settings that were done on the
+    // device will be lost
+    //
+    lRetVal = ConfigureSimpleLinkToDefaultState();
 
-	/*
+    if(lRetVal < 0)
+    {
+        if (DEVICE_NOT_IN_STATION_MODE == lRetVal)
+          UART_PRINT("Failed to configure the device in its default state \n\r");
+
+        LOOP_FOREVER();
+    }
+
+    UART_PRINT("Device is configured in default state \n\r");
+
+    //
+    // Asumption is that the device is configured in station mode already
+    // and it is in its default state
+    //
+    lRetVal = sl_Start(0, 0, 0);
+    if (lRetVal < 0 || lRetVal != ROLE_STA)
+    {
+        UART_PRINT("Failed to start the device \n\r");
+        LOOP_FOREVER();
+    }
+
+    UART_PRINT("Device started as STATION \n\r");
+
+    UART_PRINT("Connecting to AP: %s ...\r\n",SSID_NAME);
+
+    //
+    //Connecting to WLAN AP
+    //
+    lRetVal = WlanConnect();
+    if(lRetVal < 0)
+    {
+        UART_PRINT("Failed to establish connection w/ an AP \n\r");
+        LOOP_FOREVER();
+    }
+
+    UART_PRINT("Connected to AP: %s \n\r",SSID_NAME);
+
+    UART_PRINT("Device IP: %d.%d.%d.%d\n\r\n\r",
+                SL_IPV4_BYTE(g_ulIpAddr,3),
+                SL_IPV4_BYTE(g_ulIpAddr,2),
+                SL_IPV4_BYTE(g_ulIpAddr,1),
+                SL_IPV4_BYTE(g_ulIpAddr,0));
+/*
 #ifdef USER_INPUT_ENABLE
 //    lRetVal = UserInput();
     if(lRetVal < 0)
@@ -906,34 +707,29 @@ void main()
     }
 #endif
     UART_PRINT("Exiting Application ...\n\r");
-	 */
+*/
+  //  while (myStr[0]>1250);
 
-	//Disable and clear All SPI interrupts
-	MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY|SPI_INT_DMATX|SPI_INT_DMARX);
-	MAP_SPIIntClear(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY|SPI_INT_DMATX|SPI_INT_DMARX);
+    //
 
-	struct Command CMD_01;
-
-	CMD_01.opcode=0x0001; //1 to start transmission
-	CMD_01.len=0x0040; //length 64 bits
-	CMD_01.descriptor=0x6789; //fixed to 6789 for now
+      //  UART_PRINT("opening client");
+   // BsdUdpClient(5001);
 
 
+    UART_PRINT("entering spi config");
+
+             UART_PRINT("returned from spi config");
+BsdUdpClient(5001);
+
+    // power off the network processor
+    //
+    lRetVal = sl_Stop(SL_STOP_TIMEOUT);
 
 
-
-	UdpServer(5000,5001);
-
-
-	// power off the network processor
-	//
-	lRetVal = sl_Stop(SL_STOP_TIMEOUT);
-
-
-	while (1)
-	{
-		_SlNonOsMainLoopTask();
-	}
+    while (1)
+    {
+     _SlNonOsMainLoopTask();
+    }
 }
 
 

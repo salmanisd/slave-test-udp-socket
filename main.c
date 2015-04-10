@@ -103,7 +103,7 @@ extern unsigned short myStrA[350];				//Holds string from master over SPI
 extern unsigned short myStrB[350];				//Holds string from master over SPI
 static unsigned short myStrC[700];
 
-//static unsigned short myStrD[351];
+static unsigned short myStrD[351];
 
 extern unsigned int recv_ping_packet;
 extern unsigned int recv_pong_packet;
@@ -629,25 +629,27 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 		send_cmd(&CMD_01);
 
 		unsigned int index=0;
-while (check_frame_start<=0);
+//while (check_frame_start<=0);
 	while (1)
 	{
 
-if (check_frame_start==0)
-{
-	Reset_SYNC=reset_sync_spi();
+	/*	if (check_frame_start==0)
+		{
+			Reset_SYNC=reset_sync_spi();
 			send_cmd(&CMD_01);
-}
+		}*/
 
+while(packet_count<800)
+{
 		if 	(recv_ping_packet==1)
 		{
 			for (index=0;index<350;index++)
 			{
-				myStrC[index]=(myStrA[index]);
+				myStrC[index]=myStrA[index];
 			}
 
-	//		iStatus2= sl_SendTo(Send_SockID, myStrC, 700, 0,
-			//		(SlSockAddr_t *)&sAddr, iAddrSize);
+				//	iStatus2= sl_SendTo(Send_SockID, myStrC, 700, 0,
+				//	(SlSockAddr_t *)&sAddr, iAddrSize);
 
 			recv_ping_packet=0;
 		}
@@ -657,48 +659,46 @@ if (check_frame_start==0)
 
 			for (index=0;index<350;index++)
 			{
-				myStrC[index+350]=(myStrB[index]);
+				myStrC[index+350]=myStrB[index];
 			}
 			recv_pong_packet=0;
 
 
-			iStatus2= sl_SendTo(Send_SockID2, myStrC, 1400, 0,
+			iStatus2= sl_SendTo(Send_SockID, myStrC, 1400, 0,
 					(SlSockAddr_t *)&sAddr, iAddrSize);
-
+			packet_count++;
 		}
+}
 
+iStatus = sl_RecvFrom(Recv_SockID, iter, 4, 0,
+		( SlSockAddr_t *)&xAddr, (SlSocklen_t*)&iAddrSize );
 
-		iStatus = sl_RecvFrom(Recv_SockID, iter, 4, 0,
-				( SlSockAddr_t *)&xAddr, (SlSocklen_t*)&iAddrSize );
+if( iStatus < 0 )
+{
+	packet_count=0;
+}
+else if( iStatus > 0 )
+{
+	recvfromflag++;
 
-		if( iStatus < 0 )
-		{
-			packet_count=0;
-		}
-		else if( iStatus > 0 )
-		{
-			recvfromflag++;
+	switch (sl_Ntohs(*iter))
+	{
+	case  0x0001:
+		Reset_SYNC=reset_sync_spi();
+		send_cmd(&CMD_01);
+		// start transmission;
+		break;
 
-			switch (sl_Ntohs(*iter))
-			{
-			case  0x0001:
-				Reset_SYNC=reset_sync_spi();
-				send_cmd(&CMD_01);
-				// start transmission;
-				break;
+	case 0x0002:
+		Reset_SYNC=reset_sync_spi();
+		send_cmd(&CMD_02);
+		break;
 
-			case 0x0002:
-				Reset_SYNC=reset_sync_spi();
-				send_cmd(&CMD_02);
-				break;
+	default:
+		break;
 
-			default:
-				break;
-
-			}
-		}
-
-
+	}
+}
 
 
 
@@ -826,13 +826,10 @@ void main()
 		CMD_01.descriptor=0x6789; //fixed to 6789 for now
 
 /*		Reset_SYNC=reset_sync_spi();
-
 			UART_PRINT("returned from sync");
 			send_cmd(&CMD_01);
 while(1)
 {
-
-
 }*/
 
 	//

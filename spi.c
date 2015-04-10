@@ -60,14 +60,9 @@ extern struct Command {
 	unsigned short descriptor;
 };
 
- unsigned short myStrA[350];
- unsigned short myStrB[350];
- unsigned short myStrC[700];
+unsigned short myStrA[350];
+unsigned short myStrB[350];
 
-unsigned short myStrD[351];
-
-unsigned short myStrX[50];
-unsigned short myStrY[50];
 
 
 unsigned int c_full=0;
@@ -90,183 +85,149 @@ volatile unsigned int get_sync_cmd_resp=FALSE;
 volatile unsigned int cmd_sent=FALSE;
 unsigned int flow_ctrl=0;
 unsigned int recv_ping_packet=0;
- unsigned int recv_pong_packet=0;
+unsigned int recv_pong_packet=0;
 
 
-		    unsigned long ulMode;
+unsigned long ulMode;
 
 unsigned short cmd_buffer[5];
 volatile unsigned int cmd_index=0;
 
 volatile unsigned long check_frame_start=0;
-		 unsigned long pingpong_setup_t;
-		 unsigned long framesync_t;
+unsigned long pingpong_setup_t;
+unsigned long framesync_t;
 
-		 static void SlaveIntHandler()
-		 {
-
-
-			 unsigned int index = 0;
-			 unsigned long ulStatus;
+static void SlaveIntHandler()
+{
 
 
-
-			 // Read the interrupt status of the SPI.
-			 //
-			 ulStatus = MAP_SPIIntStatus(GSPI_BASE,true);
+	unsigned int index = 0;
+	unsigned long ulStatus;
+	unsigned long ulMode;
 
 
 
+	// Read the interrupt status of the SPI.
+	//
+	ulStatus = MAP_SPIIntStatus(GSPI_BASE,true);
 
 
-			 MAP_SPIIntClear(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
-
-			 if( (ulStatus & SPI_INT_TX_EMPTY)&&(get_sync_cmd_resp==FALSE) )
-			 {
-				 flag++;
-				 MAP_SPIDataPut(GSPI_BASE,0xFFFF);
 
 
-				 }
 
-			 if ( (ulStatus & SPI_INT_TX_EMPTY)&&(get_sync_cmd_resp==TRUE) )
-			 {
-				 cmd_index++;
-				 MAP_SPIDataPut(GSPI_BASE,cmd_buffer[cmd_index]);
+	MAP_SPIIntClear(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 
-				 if (cmd_index==6)
-				 {
-			 MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
+	if( (ulStatus & SPI_INT_TX_EMPTY)&&(get_sync_cmd_resp==FALSE) )
+	{
+		flag++;
+		MAP_SPIDataPut(GSPI_BASE,0xFFFF);
 
-			 cmd_sent=TRUE;
-				 }
-				 }
 
-			 if(ulStatus & SPI_INT_RX_FULL)
-			 {
+	}
 
-				//  	while(!(HWREG(GSPI_BASE + MCSPI_O_CH0STAT) & MCSPI_CH0STAT_RXS));
+	if ( (ulStatus & SPI_INT_TX_EMPTY)&&(get_sync_cmd_resp==TRUE) )
+	{
+		cmd_index++;
+		MAP_SPIDataPut(GSPI_BASE,cmd_buffer[cmd_index]);
 
-				 ulRecvData = HWREG(GSPI_BASE + MCSPI_O_RX0);
+		if (cmd_index==6)
+		{
+			MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
 
-				 if(ulRecvData==0xFFFF)
-				 {
-					 get_sync_cmd_resp=TRUE;
+			cmd_sent=TRUE;
+		}
+	}
+
+	if(ulStatus & SPI_INT_RX_FULL)
+	{
+
+		//  	while(!(HWREG(GSPI_BASE + MCSPI_O_CH0STAT) & MCSPI_CH0STAT_RXS));
+
+		ulRecvData = HWREG(GSPI_BASE + MCSPI_O_RX0);
+
+		if(ulRecvData==0xFFFF)
+		{
+			get_sync_cmd_resp=TRUE;
 			//		 MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
-				 }
+		}
 
 
-			 }
-
-			 if (ulStatus & SPI_INT_DMATX)
-			 {
-
-				 MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMATX);
-
-
-				 ulMode = MAP_uDMAChannelModeGet(UDMA_CH31_GSPI_TX | UDMA_PRI_SELECT);
-
-				 if(ulMode == UDMA_MODE_STOP)
-				 {
+	}
 
 
 
-					 SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-							 sizeof(myStrX),UDMA_SIZE_16, UDMA_ARB_1,
-							 myStrX, UDMA_SRC_INC_16,
-							 (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);
+	//PINGPONG SETUP TO RECEIEVE ADC VALUES
 
-				 }
+	if (ulStatus & SPI_INT_DMARX)
+	{
+		MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX);
 
-
-				 ulMode = MAP_uDMAChannelModeGet(UDMA_CH31_GSPI_TX | UDMA_ALT_SELECT);
-
-				 if(ulMode == UDMA_MODE_STOP)
-				 {
+		ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT);
 
 
-					 SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-							 sizeof(myStrY),UDMA_SIZE_16, UDMA_ARB_1,
-							 myStrY, UDMA_SRC_INC_16,
-							 (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);
-
-
-				 }
-			 }
-
-
-			 //PINGPONG SETUP TO RECEIEVE ADC VALUES
-
-			 if (ulStatus & SPI_INT_DMARX)
-			 {
-				 MAP_SPIIntClear(GSPI_BASE,SPI_INT_DMARX);
-
-				 ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT);
-
-
-				 if(ulMode == UDMA_MODE_STOP)
-				 {
-					 recv_ping_packet=1;
-					 if( (myStrA[0]==0xA5A5) && (myStrA[1]==0xA5A5) )
-					 {
-						 check_frame_start++;
+		if(ulMode == UDMA_MODE_STOP)
+		{
+			recv_ping_packet=1;
+			if( (myStrA[0]==0xA5A5) && (myStrA[1]==0xA5A5) )
+			{
+				check_frame_start++;
 
 
 
-					 }
-					 else
-					 {
+			}
+			else
+			{
 
-						 check_frame_start=0;
+				check_frame_start=0;
 
-						 		//	 frame_sync();//Reset_SYNC=reset_sync_spi();	// //check_frame_start=0;
-					 }
-
-
-
-					 SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-							 sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_1,
-							 (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-							 myStrA, UDMA_DST_INC_16);
-
-				 }
-
-
-				 ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT);
-
-				 if(ulMode == UDMA_MODE_STOP)
-				 {
-					 recv_pong_packet=1;
-
-					 if( (myStrB[0]==0xA5A5) && (myStrB[1]==0xA5A5) )
-					 {
-
-
-						 check_frame_start++;
-
-					 }
-					 else
-					 {
-
-						 check_frame_start=0;
-					 }
-
-
-					 SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-							 sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_1,
-							 (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-							 myStrB, UDMA_DST_INC_16);
+				//	 frame_sync();//Reset_SYNC=reset_sync_spi();	// //check_frame_start=0;
+			}
 
 
 
-				 }
+			SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
+					350,UDMA_SIZE_16, UDMA_ARB_1,
+					(void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+					myStrA, UDMA_DST_INC_16);
+
+		}
+
+
+		ulMode = MAP_uDMAChannelModeGet(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT);
+
+		if(ulMode == UDMA_MODE_STOP)
+		{
+			recv_pong_packet=1;
+
+			if( (myStrB[0]==0xA5A5) && (myStrB[1]==0xA5A5) )
+			{
+
+
+				check_frame_start++;
+
+			}
+			else
+			{
+
+				check_frame_start=0;
+			}
+
+
+			SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
+					350,UDMA_SIZE_16, UDMA_ARB_1,
+					(void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+					myStrB, UDMA_DST_INC_16);
+
+
+
+		}
 
 
 
 
 
-			 }
-		 }
+	}
+}
 
 //*****************************************************************************
 //
@@ -280,47 +241,46 @@ volatile unsigned long check_frame_start=0;
 //*****************************************************************************
 void SlaveMain()
 {
-  //  ms_delay(1000);//1 msec
-
-
-			int j=0;
+	//  ms_delay(1000);//1 msec
 
 
 
-MAP_SPIDisable(GSPI_BASE);
+
+
+	MAP_SPIDisable(GSPI_BASE);
 	//
-  // Reset SPI
-  //
-  MAP_SPIReset(GSPI_BASE);
+	// Reset SPI
+	//
+	MAP_SPIReset(GSPI_BASE);
 
-  //
-  // Configure SPI interface
-  //
-  MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
-                     SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
-                     (SPI_HW_CTRL_CS |
-                     SPI_4PIN_MODE |
-                     SPI_TURBO_OFF |
-                     SPI_CS_ACTIVELOW |
-                     SPI_WL_16));
+	//
+	// Configure SPI interface
+	//
+	MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
+			SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
+			(SPI_HW_CTRL_CS |
+					SPI_4PIN_MODE |
+					SPI_TURBO_OFF |
+					SPI_CS_ACTIVELOW |
+					SPI_WL_16));
 
-  //
-  // Register Interrupt Handler
-  //
- MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
+	//
+	// Register Interrupt Handler
+	//
+	MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
 
 
 
-  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-              sizeof(myStrA),UDMA_SIZE_16, UDMA_ARB_1,
-              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-              myStrA, UDMA_DST_INC_16);
+	SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
+			350,UDMA_SIZE_16, UDMA_ARB_1,
+			(void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+			myStrA, UDMA_DST_INC_16);
 
-  SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-              sizeof(myStrB),UDMA_SIZE_16, UDMA_ARB_1,
-              (void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
-              myStrB, UDMA_DST_INC_16);
-
+	SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
+			350,UDMA_SIZE_16, UDMA_ARB_1,
+			(void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
+			myStrB, UDMA_DST_INC_16);
+	/**
   SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
               sizeof(myStrX),UDMA_SIZE_16, UDMA_ARB_1,
                myStrX , UDMA_SRC_INC_16,
@@ -329,24 +289,23 @@ MAP_SPIDisable(GSPI_BASE);
   SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
               sizeof(myStrY),UDMA_SIZE_16, UDMA_ARB_1,
                myStrY, UDMA_SRC_INC_NONE,
-              (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);
+              (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);*/
 
 
-  SPIDmaEnable(GSPI_BASE,SPI_RX_DMA|SPI_TX_DMA);
+	SPIDmaEnable(GSPI_BASE,SPI_RX_DMA);
 
 
 
-  //
-  // Enable Interrupts
-   MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
-  MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMARX|SPI_INT_DMATX);
- // MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL);
-  //
-  // Enable SPI for communication
-  //
-  MAP_SPIEnable(GSPI_BASE);
+	//
+	// Enable Interrupts
+	MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
+	MAP_SPIIntEnable(GSPI_BASE,SPI_INT_DMARX);
 
-//	pingpong_setup_t=	TimerValueGet(TIMERA0_BASE, TIMER_A);
+	//
+	// Enable SPI for communication
+	//
+	MAP_SPIEnable(GSPI_BASE);
+
 
 
 
@@ -375,41 +334,41 @@ void send_cmd(struct Command *CMD_Number)
 				cmd_buffer[3]=0x9342;*/
 
 
-MAP_SPIDisable(GSPI_BASE);
+	MAP_SPIDisable(GSPI_BASE);
 	//
-  // Reset SPI
-  //
-  MAP_SPIReset(GSPI_BASE);
+	// Reset SPI
+	//
+	MAP_SPIReset(GSPI_BASE);
 
-  MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
-                         SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
-                         (SPI_HW_CTRL_CS |
-                         SPI_4PIN_MODE |
-                         SPI_TURBO_OFF |
-                         SPI_CS_ACTIVELOW |
-                         SPI_WL_16));
-
-
-
-
-	  MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
-
-	      //
-	      // Enable Interrupts
-	      //
-	      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
+	MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
+			SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
+			(SPI_HW_CTRL_CS |
+					SPI_4PIN_MODE |
+					SPI_TURBO_OFF |
+					SPI_CS_ACTIVELOW |
+					SPI_WL_16));
 
 
 
-	      //
-	      // Enable SPI for communication
-	      //
-	      MAP_SPIEnable(GSPI_BASE);
 
-	      while(cmd_sent==FALSE);
+	MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
 
-	      spi();
-	      }
+	//
+	// Enable Interrupts
+	//
+	MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
+
+
+
+	//
+	// Enable SPI for communication
+	//
+	MAP_SPIEnable(GSPI_BASE);
+
+	while(cmd_sent==FALSE);
+
+	spi();
+}
 
 
 //*****************************************************************************
@@ -427,58 +386,58 @@ int reset_sync_spi()
 
 	get_sync_cmd_resp=FALSE;
 
-//	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
+	//	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
 
 	signed int j=-1;
 	// Enable the SPI module clock
 
-		  //
+	//
 
 	MAP_PRCMPeripheralClkEnable(PRCM_GSPI,PRCM_RUN_MODE_CLK);
 
 
 
-		  //
-		  // Reset the peripheral
-		  //
-		  MAP_PRCMPeripheralReset(PRCM_GSPI);
+	//
+	// Reset the peripheral
+	//
+	MAP_PRCMPeripheralReset(PRCM_GSPI);
 
-    MAP_SPIReset(GSPI_BASE);
-    MAP_SPIDisable(GSPI_BASE);
-	    //
-	    // Configure SPI interface
-	    //
-    MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
-                         SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
-                         (SPI_HW_CTRL_CS |
-                         SPI_4PIN_MODE |
-                         SPI_TURBO_OFF |
-                         SPI_CS_ACTIVELOW |
-                         SPI_WL_16));
-
-
+	MAP_SPIReset(GSPI_BASE);
+	MAP_SPIDisable(GSPI_BASE);
+	//
+	// Configure SPI interface
+	//
+	MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
+			SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
+			(SPI_HW_CTRL_CS |
+					SPI_4PIN_MODE |
+					SPI_TURBO_OFF |
+					SPI_CS_ACTIVELOW |
+					SPI_WL_16));
 
 
-	  MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
 
 
-	      //
-	      // Enable Interrupts
+	MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
 
 
-	      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_TX_EMPTY|SPI_INT_RX_FULL);
+	//
+	// Enable Interrupts
 
 
-	      //
-	      // Enable SPI for communication
-	      //
-	      MAP_SPIEnable(GSPI_BASE);
+	MAP_SPIIntEnable(GSPI_BASE,SPI_INT_TX_EMPTY|SPI_INT_RX_FULL);
 
-	    //  while(1);
-	    while(get_sync_cmd_resp==FALSE);
 
-//TimerEnable(TIMERA0_BASE, TIMER_A);
-return 1;
+	//
+	// Enable SPI for communication
+	//
+	MAP_SPIEnable(GSPI_BASE);
+
+	//  while(1);
+	while(get_sync_cmd_resp==FALSE);
+
+	//TimerEnable(TIMERA0_BASE, TIMER_A);
+	return 1;
 
 
 }
@@ -497,47 +456,47 @@ MAP_SPIIntClear(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY|SPI_INT_DMATX|SPI_INT
 get_sync_cmd_resp=FALSE;
 
 
-	  //
-	  // Reset the peripheral
-	  //
-	  MAP_PRCMPeripheralReset(PRCM_GSPI);
+//
+// Reset the peripheral
+//
+MAP_PRCMPeripheralReset(PRCM_GSPI);
 
 MAP_SPIReset(GSPI_BASE);
 MAP_SPIDisable(GSPI_BASE);
-    //
-    // Configure SPI interface
-    //
+//
+// Configure SPI interface
+//
 MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
-                     SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
-                     (SPI_HW_CTRL_CS |
-                     SPI_4PIN_MODE |
-                     SPI_TURBO_OFF |
-                     SPI_CS_ACTIVELOW |
-                     SPI_WL_16));
+		SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
+		(SPI_HW_CTRL_CS |
+				SPI_4PIN_MODE |
+				SPI_TURBO_OFF |
+				SPI_CS_ACTIVELOW |
+				SPI_WL_16));
 
 
 
 
-  MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
+MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
 
 
-      //
-      // Enable Interrupts
+//
+// Enable Interrupts
 
 
-      MAP_SPIIntEnable(GSPI_BASE,SPI_INT_TX_EMPTY|SPI_INT_RX_FULL);
+MAP_SPIIntEnable(GSPI_BASE,SPI_INT_TX_EMPTY|SPI_INT_RX_FULL);
 
 
-      //
-      // Enable SPI for communication
-      //
-      MAP_SPIEnable(GSPI_BASE);
+//
+// Enable SPI for communication
+//
+MAP_SPIEnable(GSPI_BASE);
 
-    //  while(1);
-    while(get_sync_cmd_resp==FALSE);
+//  while(1);
+while(get_sync_cmd_resp==FALSE);
 
 spi();
-	      }
+}
 
 
 
@@ -557,22 +516,22 @@ spi();
 void spi()
 {
 
-  //
-  // Initialize Board configurations
-  //
-//BoardInit();
+	//
+	// Initialize Board configurations
+	//
+	//BoardInit();
 	//UART_PRINT("Device started as STATION \n\r");
-  //
-  // Muxing  SPI lines.
-  //
-//  PinMuxConfig();
+	//
+	// Muxing  SPI lines.
+	//
+	//  PinMuxConfig();
 
-  //
-  // Enable the SPI module clock
-  //
+	//
+	// Enable the SPI module clock
+	//
 
 
-  SlaveMain();
+	SlaveMain();
 
 
 

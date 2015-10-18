@@ -1,4 +1,3 @@
-
 #include <string.h>
 #include "hw_types.h"
 #include "hw_memmap.h"
@@ -60,8 +59,8 @@ extern struct Command {
 	unsigned short descriptor;
 };
 
-unsigned short myStrA[350];
-unsigned short myStrB[350];
+unsigned short myStrA[700];
+unsigned short myStrB[700];
 
 
 
@@ -186,7 +185,7 @@ static void SlaveIntHandler()
 
 
 			SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-					350,UDMA_SIZE_16, UDMA_ARB_1,
+					700,UDMA_SIZE_16, UDMA_ARB_1,
 					(void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 					myStrA, UDMA_DST_INC_16);
 
@@ -214,7 +213,7 @@ static void SlaveIntHandler()
 
 
 			SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-					350,UDMA_SIZE_16, UDMA_ARB_1,
+					700,UDMA_SIZE_16, UDMA_ARB_1,
 					(void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 					myStrB, UDMA_DST_INC_16);
 
@@ -272,12 +271,12 @@ void SlaveMain()
 
 
 	SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_PRI_SELECT, UDMA_MODE_PINGPONG,
-			350,UDMA_SIZE_16, UDMA_ARB_1,
+			700,UDMA_SIZE_16, UDMA_ARB_1,
 			(void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 			myStrA, UDMA_DST_INC_16);
 
 	SetupTransfer(UDMA_CH30_GSPI_RX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
-			350,UDMA_SIZE_16, UDMA_ARB_1,
+			700,UDMA_SIZE_16, UDMA_ARB_1,
 			(void *)(GSPI_BASE + MCSPI_O_RX0), UDMA_SRC_INC_NONE,
 			myStrB, UDMA_DST_INC_16);
 	/**
@@ -285,7 +284,6 @@ void SlaveMain()
               sizeof(myStrX),UDMA_SIZE_16, UDMA_ARB_1,
                myStrX , UDMA_SRC_INC_16,
               (void *)(GSPI_BASE + MCSPI_O_TX0), UDMA_DST_INC_NONE);
-
   SetupTransfer(UDMA_CH31_GSPI_TX | UDMA_ALT_SELECT, UDMA_MODE_PINGPONG,
               sizeof(myStrY),UDMA_SIZE_16, UDMA_ARB_1,
                myStrY, UDMA_SRC_INC_NONE,
@@ -316,16 +314,16 @@ void SlaveMain()
 //send_cmd();
 //*****************************************************************************
 
-void send_cmd(struct Command *CMD_Number)
+void send_cmd(unsigned short *opcode)
 {
 
 	cmd_sent=FALSE;
 	cmd_index=0;
 
 	cmd_buffer[0]=0xABCD;
-	cmd_buffer[1]=CMD_Number->opcode;
-	cmd_buffer[2]=CMD_Number->len;
-	cmd_buffer[3]=CMD_Number->descriptor;
+	cmd_buffer[1]=0x5678;
+	cmd_buffer[2]=*opcode;
+	cmd_buffer[3]=0x7778;
 	cmd_buffer[4]=0x2525;
 
 	/*cmd_buffer[0]=0x3245;
@@ -366,7 +364,6 @@ void send_cmd(struct Command *CMD_Number)
 	MAP_SPIEnable(GSPI_BASE);
 
 	while(cmd_sent==FALSE);
-
 	spi();
 }
 
@@ -386,9 +383,6 @@ int reset_sync_spi()
 
 	get_sync_cmd_resp=FALSE;
 
-	//	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
-
-	signed int j=-1;
 	// Enable the SPI module clock
 
 	//
@@ -435,8 +429,6 @@ int reset_sync_spi()
 
 	//  while(1);
 	while(get_sync_cmd_resp==FALSE);
-
-	//TimerEnable(TIMERA0_BASE, TIMER_A);
 	return 1;
 
 

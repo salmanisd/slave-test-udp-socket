@@ -138,7 +138,6 @@ test\ udp_socket.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	"c:/ti/ccsv6/tools/compiler/arm_5.1.6/bin/armcl" -mv7M4 --code_state=16 --float_support=vfplib --abi=eabi -me -Ooff -g --define=ccs --define=USER_INPUT_ENABLE --define=cc3200 --display_error_number --diag_warning=225 --diag_wrap=off -z -m"test udp_socket.map" --heap_size=0x800 --stack_size=0x800 -i"c:/ti/ccsv6/tools/compiler/arm_5.1.6/lib" -i"c:/ti/ccsv6/tools/compiler/arm_5.1.6/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="test udp_socket_linkInfo.xml" --rom_model -o "test udp_socket.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
-	@$(MAKE) --no-print-directory post-build
 
 test\ udp_socket.hex: $(EXE_OUTPUTS)
 	@echo 'Invoking: ARM Hex Utility'
@@ -154,12 +153,8 @@ clean:
 	-@echo 'Finished clean'
 	-@echo ' '
 
-post-build:
-	-"c:/ti/ccsv6/utils/tiobj2bin/tiobj2bin" "test udp_socket.out" "test udp_socket.bin" "c:/ti/ccsv6/tools/compiler/arm_5.1.6/bin/armofd" "c:/ti/ccsv6/tools/compiler/arm_5.1.6/bin/armhex" "c:/ti/ccsv6/utils/tiobj2bin/mkhex4bin"
-	-@echo ' '
-
 .PHONY: all clean dependents
-.SECONDARY: post-build
+.SECONDARY:
 
 -include ../makefile.targets
 

@@ -99,11 +99,11 @@ unsigned long udploop;
 extern int Reset_SYNC;
 char g_cBsdBuf[BUF_SIZE];char udp_str[]="Testing UDP";unsigned int num=9578;unsigned char myStr2[];unsigned short shadowstr;
 
-extern unsigned short myStrA[350];				//Holds string from master over SPI
-extern unsigned short myStrB[350];				//Holds string from master over SPI
+extern unsigned short myStrA[700];				//Holds string from master over SPI
+extern unsigned short myStrB[700];				//Holds string from master over SPI
 static unsigned short myStrC[700];
+static unsigned short myStrD[700];
 
-static unsigned short myStrD[351];
 
 extern unsigned int recv_ping_packet;
 extern unsigned int recv_pong_packet;
@@ -112,6 +112,7 @@ extern unsigned int check_frame_start;
 unsigned int spi_ret;
 extern unsigned int c_full;
 
+unsigned short cmd_code;
 
 unsigned short rx_udp_server[2];
 #if defined(ccs) || defined(gcc)
@@ -601,22 +602,22 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 
 
 	unsigned short *iter=rx_udp_server;
+	unsigned short cmd_code;
 	udploop=0;
 	struct Command CMD_01;
 
-	CMD_01.opcode=0x0001; //1 to start transmission
+	CMD_01.opcode=0x4251; //1 to start transmission
 	CMD_01.len=0x0040; //length 64 bits
 	CMD_01.descriptor=0x6789; //fixed to 6789 for now
 
 	struct Command CMD_02;
 
-	CMD_02.opcode=0x0002; //2 to stop transmission
+	CMD_02.opcode=0x4851; //2 to stop transmission
 	CMD_02.len=0x0040; //length 64 bits
 	CMD_02.descriptor=0x6789; //fixed to 6789 for now
 
 
-	Timer_IF_Init(PRCM_TIMERA0, TIMERA0_BASE, TIMER_CFG_ONE_SHOT_UP, TIMER_A, 0);
-	MAP_TimerEnable(TIMERA0_BASE, TIMER_A);
+
 
 
 	UART_PRINT("calling  sync");
@@ -629,27 +630,20 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 		send_cmd(&CMD_01);
 
 		unsigned int index=0;
-//while (check_frame_start<=0);
+
 	while (1)
 	{
 
-	/*	if (check_frame_start==0)
-		{
-			Reset_SYNC=reset_sync_spi();
-			send_cmd(&CMD_01);
-		}*/
+
 
 while(packet_count<800)
 {
 		if 	(recv_ping_packet==1)
 		{
-			for (index=0;index<350;index++)
-			{
-				myStrC[index]=myStrA[index];
-			}
 
-				//	iStatus2= sl_SendTo(Send_SockID, myStrC, 700, 0,
-				//	(SlSockAddr_t *)&sAddr, iAddrSize);
+
+			iStatus2= sl_SendTo(Send_SockID, myStrA, 1400, 0,
+											(SlSockAddr_t *)&sAddr, iAddrSize);
 
 			recv_ping_packet=0;
 		}
@@ -657,15 +651,14 @@ while(packet_count<800)
 		if 	(recv_pong_packet==1)
 		{
 
-			for (index=0;index<350;index++)
-			{
-				myStrC[index+350]=myStrB[index];
-			}
-			recv_pong_packet=0;
 
+			myStrB[0]=myStrB[698];
+			myStrB[1]=myStrB[699];
 
-			iStatus2= sl_SendTo(Send_SockID, myStrC, 1400, 0,
+			iStatus2= sl_SendTo(Send_SockID, myStrB, 1400, 0,
 					(SlSockAddr_t *)&sAddr, iAddrSize);
+
+			recv_pong_packet=0;
 			packet_count++;
 		}
 }
@@ -681,23 +674,13 @@ else if( iStatus > 0 )
 {
 	recvfromflag++;
 
-	switch (sl_Ntohs(*iter))
-	{
-	case  0x0001:
+
 		Reset_SYNC=reset_sync_spi();
-		send_cmd(&CMD_01);
-		// start transmission;
-		break;
+	//	cmd_code=sl_Ntohs(*iter);
+		send_cmd(iter);
 
-	case 0x0002:
-		Reset_SYNC=reset_sync_spi();
-		send_cmd(&CMD_02);
-		break;
 
-	default:
-		break;
 
-	}
 }
 
 
@@ -786,6 +769,8 @@ void main()
 {
 
 	long lRetVal = -1;
+
+
 
 	//
 	// Board Initialization
@@ -921,7 +906,7 @@ while(1)
 
 
 
-	UdpServer(5000,5001);
+	UdpServer(5000,50001);
 
 
 	// power off the network processor

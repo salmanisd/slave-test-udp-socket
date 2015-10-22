@@ -693,7 +693,7 @@ else if( iStatus > 0 )
 //
 //!  \brief Connecting to a WLAN Accesspoint
 //!
-//!   This function connects to the required AP (SSID_NAME) with Security
+//!  // This function connects to the required AP (SSID_NAME) with Security
 //!   parameters specified in te form of macros at the top of this file
 //!
 //!   \param[in]              None

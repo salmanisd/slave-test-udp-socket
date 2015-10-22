@@ -116,32 +116,32 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXE_OUTPUTS += \
-test\ udp_socket.out \
+udp_socket.out \
 
 EXE_OUTPUTS__QUOTED += \
-"test udp_socket.out" \
+"udp_socket.out" \
 
 BIN_OUTPUTS += \
-test\ udp_socket.hex \
+udp_socket.hex \
 
 BIN_OUTPUTS__QUOTED += \
-"test udp_socket.hex" \
+"udp_socket.hex" \
 
 
 # All Target
-all: test\ udp_socket.out
+all: udp_socket.out
 
 # Tool invocations
-test\ udp_socket.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
+udp_socket.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM Linker'
-	"c:/ti/ccsv6/tools/compiler/arm_5.1.6/bin/armcl" -mv7M4 --code_state=16 --float_support=vfplib --abi=eabi -me -Ooff -g --define=ccs --define=USER_INPUT_ENABLE --define=cc3200 --display_error_number --diag_warning=225 --diag_wrap=off -z -m"test udp_socket.map" --heap_size=0x800 --stack_size=0x800 -i"c:/ti/ccsv6/tools/compiler/arm_5.1.6/lib" -i"c:/ti/ccsv6/tools/compiler/arm_5.1.6/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="test udp_socket_linkInfo.xml" --rom_model -o "test udp_socket.out" $(ORDERED_OBJS)
+	"c:/ti/ccsv6/tools/compiler/arm_5.1.6/bin/armcl" -mv7M4 --code_state=16 --float_support=vfplib --abi=eabi -me -Ooff -g --define=ccs --define=USER_INPUT_ENABLE --define=cc3200 --display_error_number --diag_warning=225 --diag_wrap=off -z -m"udp_socket.map" --heap_size=0x800 --stack_size=0x800 -i"c:/ti/ccsv6/tools/compiler/arm_5.1.6/lib" -i"c:/ti/ccsv6/tools/compiler/arm_5.1.6/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="udp_socket_linkInfo.xml" --rom_model -o "udp_socket.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-test\ udp_socket.hex: $(EXE_OUTPUTS)
+udp_socket.hex: $(EXE_OUTPUTS)
 	@echo 'Invoking: ARM Hex Utility'
-	"c:/ti/ccsv6/tools/compiler/arm_5.1.6/bin/armhex"  -o "test udp_socket.hex" $(EXE_OUTPUTS__QUOTED)
+	"c:/ti/ccsv6/tools/compiler/arm_5.1.6/bin/armhex"  -o "udp_socket.hex" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $@'
 	@echo ' '
 

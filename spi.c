@@ -17,6 +17,7 @@
 #include "uart_if.h"
 #include "udma_if.h"
 #include "timer.h"
+#include "common.h"
 
 
 // Common interface includes
@@ -89,6 +90,9 @@ unsigned int recv_pong_packet=0;
 
 unsigned long ulMode;
 
+unsigned long cmd_ack=0;
+unsigned short cmd_ackcheck=0;
+
 unsigned short cmd_buffer[5];
 volatile unsigned int cmd_index=0;
 
@@ -139,7 +143,6 @@ static void SlaveIntHandler()
 
 	if(ulStatus & SPI_INT_RX_FULL)
 	{
-
 		//  	while(!(HWREG(GSPI_BASE + MCSPI_O_CH0STAT) & MCSPI_CH0STAT_RXS));
 
 		ulRecvData = HWREG(GSPI_BASE + MCSPI_O_RX0);
@@ -314,7 +317,7 @@ void SlaveMain()
 //send_cmd();
 //*****************************************************************************
 
-void send_cmd(unsigned short *opcode)
+int send_cmd(unsigned short *opcode)
 {
 
 	cmd_sent=FALSE;
@@ -364,7 +367,16 @@ void send_cmd(unsigned short *opcode)
 	MAP_SPIEnable(GSPI_BASE);
 
 	while(cmd_sent==FALSE);
+	//ulRecvData = HWREG(GSPI_BASE + MCSPI_O_RX0);
+
+	//read spi register value to chek for success signal
+	SPIDataGet(GSPI_BASE,&cmd_ack);
+	SPIDataGet(GSPI_BASE,&cmd_ack);
+
 	spi();
+return (cmd_ack & 0x0000FFFF);
+
+
 }
 
 

@@ -69,7 +69,7 @@ extern struct Command {
 //****************************************************************************
 int BsdUdpClient(unsigned short usPort);
 int BsdUdpServer(unsigned short usPort);
-int UdpServer(unsigned short usPort,unsigned short destPort);
+int UdpServer(unsigned short usPort,unsigned short sendDataPort,unsigned short sendAckPort);
 static long WlanConnect();
 //static void DisplayBanner();
 static void BoardInit();
@@ -455,7 +455,7 @@ static long ConfigureSimpleLinkToDefaultState()
 	   lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE,1,1,&ucVal);
     ASSERT_ON_ERROR(lRetVal);
 
-	/*SlNetCfgIpV4Args_t ipV4;
+	SlNetCfgIpV4Args_t ipV4;
 	ipV4.ipV4 = (unsigned long)SL_IPV4_VAL(192,168,173,54); // unsigned long IP  address
 	ipV4.ipV4Mask = (unsigned long)SL_IPV4_VAL(255,255,255,0); // unsigned long Subnet mask for this AP/P2P
 	ipV4.ipV4Gateway = (unsigned long)SL_IPV4_VAL(192,168,173,0); // unsigned long Default gateway address
@@ -463,7 +463,7 @@ static long ConfigureSimpleLinkToDefaultState()
 	lRetVal = sl_NetCfgSet(SL_IPV4_STA_P2P_CL_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (unsigned char *) &ipV4);
 	sl_Stop(0);
 	sl_Start(NULL,NULL,NULL);
-	ASSERT_ON_ERROR(lRetVal);*/
+	ASSERT_ON_ERROR(lRetVal);
 
 	// Disable scan
 	ucConfigOpt = SL_SCAN_POLICY(0);
@@ -506,11 +506,13 @@ static long ConfigureSimpleLinkToDefaultState()
 
 unsigned int timerValue = 0;
 unsigned int tempCnt = 0;
-int UdpServer(unsigned short serverPort,unsigned short destPort)
+int UdpServer(unsigned short serverPort,unsigned short sendDataPort,unsigned short sendAckPort)
 {
-	SlSockAddrIn_t  xAddr;
+	SlSockAddrIn_t  rAddr;
 	SlSockAddrIn_t  sAddr;
+	SlSockAddrIn_t  cAddr;
 	SlSockAddrIn_t  sLocalAddr;
+	long			 lRetVal = -1;
 	int             iCounter;
 	int             iAddrSize;
 	int             Send_SockID,Send_SockID2,Recv_SockID;
@@ -521,21 +523,26 @@ int UdpServer(unsigned short serverPort,unsigned short destPort)
 	int 			nonBlockingValue=1;
 	int   		    packet_count=0;
 	//filling the UDP server socket address
-	char udpstr[2];
-	udpstr[0]='A';
-	udpstr[1]='B';
+	short udp_cmd_success=0x5777;
+	short udp_cmd_fail=0x6789;
+
 
 	sLocalAddr.sin_family = SL_AF_INET;
 	sLocalAddr.sin_port = sl_Htons((unsigned short) serverPort);
 	sLocalAddr.sin_addr.s_addr =0;
 
 	sAddr.sin_family = SL_AF_INET;
-	sAddr.sin_port = sl_Htons((unsigned short)destPort);
+	sAddr.sin_port = sl_Htons((unsigned short)sendDataPort);
 	sAddr.sin_addr.s_addr =sl_Htonl(SL_IPV4_VAL(192,168,173,1));// sl_Htonl((unsigned int)g_ulDestinationIp);192,168,173,1
 
-	xAddr.sin_family = SL_AF_INET;
-	xAddr.sin_port = sl_Htons((unsigned short)5000);
-	xAddr.sin_addr.s_addr =sl_Htonl(SL_IPV4_VAL(120,0,0,0));
+
+	cAddr.sin_family = SL_AF_INET;
+	cAddr.sin_port = sl_Htons((unsigned short)sendAckPort);
+	cAddr.sin_addr.s_addr =sl_Htonl(SL_IPV4_VAL(192,168,173,1));// sl_Htonl((unsigned int)g_ulDestinationIp);192,168,173,1
+
+	rAddr.sin_family = SL_AF_INET;
+	rAddr.sin_port = sl_Htons((unsigned short)5000);
+	rAddr.sin_addr.s_addr =sl_Htonl(SL_IPV4_VAL(120,0,0,0));
 
 	iAddrSize = sizeof(SlSockAddrIn_t);
 
@@ -664,7 +671,7 @@ while(packet_count<800)
 }
 
 iStatus = sl_RecvFrom(Recv_SockID, iter, 4, 0,
-		( SlSockAddr_t *)&xAddr, (SlSocklen_t*)&iAddrSize );
+		( SlSockAddr_t *)&rAddr, (SlSocklen_t*)&iAddrSize );
 
 if( iStatus < 0 )
 {
@@ -677,8 +684,9 @@ else if( iStatus > 0 )
 
 		Reset_SYNC=reset_sync_spi();
 	//	cmd_code=sl_Ntohs(*iter);
-		send_cmd(iter);
-
+		lRetVal=send_cmd(iter);
+		iStatus2= sl_SendTo(Send_SockID2, &lRetVal, 2, 0,
+													(SlSockAddr_t *)&cAddr, iAddrSize);
 
 
 }
@@ -804,19 +812,24 @@ void main()
 	MAP_SPIIntDisable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY|SPI_INT_DMATX|SPI_INT_DMARX);
 	MAP_SPIIntClear(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY|SPI_INT_DMATX|SPI_INT_DMARX);
 
-	struct Command CMD_01;
+	/*		 struct Command CMD_01;
 
-		CMD_01.opcode=0x0001; //1 to start transmission
+		CMD_01.opcode=0x4871; //1 to start transmission
 		CMD_01.len=0x0040; //length 64 bits
 		CMD_01.descriptor=0x6789; //fixed to 6789 for now
 
-/*		Reset_SYNC=reset_sync_spi();
+			UART_PRINT("ff");
+		Reset_SYNC=reset_sync_spi();
 			UART_PRINT("returned from sync");
-			send_cmd(&CMD_01);
+		lRetVal=send_cmd(&CMD_01);
+		if (lRetVal<0)
+			UART_PRINT("got cmd NOT ack");
+		else
+			UART_PRINT("got cmd  ack");
 while(1)
 {
-}*/
-
+}
+*/
 	//
 	// Following function configure the device to default state by cleaning
 	// the persistent settings stored in NVMEM (viz. connection profiles &
@@ -906,7 +919,7 @@ while(1)
 
 
 
-	UdpServer(5000,50001);
+	UdpServer(5000,50001,50002);
 
 
 	// power off the network processor
